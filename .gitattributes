@@ -1,0 +1,2 @@
+# Preserve exact exported bytes; patches may contain binary hunks.
+* -text

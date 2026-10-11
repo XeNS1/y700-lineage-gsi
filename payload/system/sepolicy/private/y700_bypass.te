@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+type y700_bypassd, domain, coredomain;
+type y700_bypassd_exec, exec_type, file_type, system_file_type;
+type y700_bypass_service, service_manager_type;
+type y700_bypass_data_file, file_type, data_file_type, core_data_file_type;
+
+init_daemon_domain(y700_bypassd)
+binder_use(y700_bypassd)
+add_service(y700_bypassd, y700_bypass_service)
+binder_call(system_app, y700_bypassd)
+allow system_app y700_bypass_service:service_manager find;
+
+# Read security_getenforce() for the supported-profile check; never write it.
+allow y700_bypassd selinuxfs:file r_file_perms;
+
+# Read the device's nonstandard Qualcomm/Lenovo telemetry labels. Standard
+# batteryinfo is excluded to retain AOSP's coredomain/health neverallow.
+r_dir_file(y700_bypassd, { sysfs_type -sysfs_batteryinfo })
+allow y700_bypassd sysfs:lnk_file r_file_perms;
+allow y700_bypassd y700_bypass_data_file:dir create_dir_perms;
+allow y700_bypassd y700_bypass_data_file:file create_file_perms;
+allow y700_bypassd self:process { signal sigkill };
+
+# Charging write access is deliberately absent here. A CIL optional in
+# y700_bypass_vendor.cil grants only the stock vendor battery-supply type.

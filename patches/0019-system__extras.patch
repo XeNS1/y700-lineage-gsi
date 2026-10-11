@@ -1,0 +1,26 @@
+diff --git a/bootctl/bootctl.cpp b/bootctl/bootctl.cpp
+index 2dc679e1cf77a8d6ac61ad6e4e6298a8c3c38a78..dc61c93f10dacc5ac83782b1c54d51362668d3ff 100644
+--- a/bootctl/bootctl.cpp
++++ b/bootctl/bootctl.cpp
+@@ -60,6 +60,8 @@ static void usage(FILE* where, int /* argc */, char* argv[]) {
+ 
+ static constexpr auto ToString(BootControlVersion ver) {
+     switch (ver) {
++        case BootControlVersion::BOOTCTL_V1_1:
++            return "android.hardware.boot@1.1::IBootControl";
+         case BootControlVersion::BOOTCTL_V1_2:
+             return "android.hardware.boot@1.2::IBootControl";
+         case BootControlVersion::BOOTCTL_AIDL:
+diff --git a/libfscrypt/fscrypt.cpp b/libfscrypt/fscrypt.cpp
+index 4c756b18dfeb6602f0407c8d858670d817018978..f3b106e9bb49cc7fa4b227b84503df4dc9c960c1 100644
+--- a/libfscrypt/fscrypt.cpp
++++ b/libfscrypt/fscrypt.cpp
+@@ -354,7 +354,7 @@ bool EnsurePolicy(const EncryptionPolicy& policy, const std::string& directory)
+     android::base::unique_fd fd(open(directory.c_str(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+     if (fd == -1) {
+         PLOG(ERROR) << "Failed to open directory " << directory;
+-        return false;
++        return true;
+     }
+ 
+     bool already_encrypted = fscrypt_is_encrypted(fd);

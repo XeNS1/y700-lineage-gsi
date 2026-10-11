@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <string name="y700_bypass_title">Обходная зарядка (Экспериментально)</string>
+    <string name="y700_bypass_tile_label">Обходная зарядка</string>
+    <string name="y700_bypass_description">Питание от зарядника без заряда батареи. Экспериментальная функция; выключается при отключении зарядника.</string>
+    <string name="y700_bypass_on">Включена</string>
+    <string name="y700_bypass_off">Выключена</string>
+    <string name="y700_bypass_starting">Включается…</string>
+    <string name="y700_bypass_settling">Ожидание стабилизации тока батареи…</string>
+    <string name="y700_bypass_stopping">Возврат обычной зарядки…</string>
+    <string name="y700_bypass_unavailable">Проверка контроллера зарядки…</string>
+    <string name="y700_bypass_unsupported">Недоступно на этом устройстве или базе прошивки</string>
+    <string name="y700_bypass_connect">Подключи зарядник. Обходная зарядка выключена.</string>
+    <string name="y700_bypass_need_charge">Батарея должна заряжаться и быть ниже полного заряда.</string>
+    <string name="y700_bypass_capacity" formatted="false">Для включения нужен заряд от 20% до 99%.</string>
+    <string name="y700_bypass_temperature">Режим остановлен: температура батареи достигла 45 °C.</string>
+    <string name="y700_bypass_write_failed">Запрос изменения зарядки не принят. Обход остановлен.</string>
+    <string name="y700_bypass_telemetry">Режим остановлен: показания батареи или питания недоступны.</string>
+    <string name="y700_bypass_not_settled">Режим остановлен: ток батареи не стабилизировался.</string>
+    <string name="y700_bypass_discharge">Режим остановлен: обнаружен устойчивый разряд батареи.</string>
+    <string name="y700_bypass_charge_continues">Режим остановлен: после перехода батарея продолжает заряжаться.</string>
+    <string name="y700_bypass_external">Состояние зарядки изменено другим контроллером</string>
+    <string name="y700_bypass_restore_failed">Возврат зарядки не подтверждён. Контроллер повторяет попытки.</string>
+</resources>

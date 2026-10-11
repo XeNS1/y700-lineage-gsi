@@ -1,0 +1,613 @@
+diff --git a/Android.bp b/Android.bp
+index 558b2dd8eecc0b3e92ac77c9f66d1190a5d87bf4..71c0185e5c438ab1b9ab861146c865792eb5cae9 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -90,6 +90,8 @@ java_library {
+         "android.hardware.radio.network-V5-java",
+         "android.hardware.radio.sim-V5-java",
+         "android.hardware.radio.voice-V5-java",
++        "vendor.samsung.hardware.radio.network-V1-java",
++        "vendor.samsung.hardware.radio-V2.2-java",
+         "voip-common",
+         "ims-common",
+         "unsupportedappusage",
+diff --git a/src/java/com/android/internal/telephony/GsmCdmaPhone.java b/src/java/com/android/internal/telephony/GsmCdmaPhone.java
+index aef53168a90501f7b526e58dd962455888d48832..e6cee653679238971bb0677eee711bc89f1ec089 100644
+--- a/src/java/com/android/internal/telephony/GsmCdmaPhone.java
++++ b/src/java/com/android/internal/telephony/GsmCdmaPhone.java
+@@ -2626,7 +2626,11 @@ public class GsmCdmaPhone extends Phone {
+         if (found != null) {
+             // Complete pending USSD
+             if (isUssdRelease) {
+-                found.onUssdRelease();
++                if (SystemProperties.getBoolean("persist.sys.radio.huawei", false)) {
++                    found.onUssdFinished(ussdMessage, isUssdRequest);
++                } else {
++                    found.onUssdRelease();
++                }
+             } else if (isUssdError) {
+                 found.onUssdFinishedError();
+             } else {
+@@ -2895,7 +2899,7 @@ public class GsmCdmaPhone extends Phone {
+                 String version = (String)ar.result;
+                 if (version != null) {
+                     int length = version.length();
+-                    final int MAX_VERSION_LEN = SystemProperties.PROP_VALUE_MAX/2;
++                    final int MAX_VERSION_LEN = SystemProperties.PROP_VALUE_MAX/2 - 2;
+                     TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
+                             length <= MAX_VERSION_LEN ? version
+                                 : version.substring(length - MAX_VERSION_LEN, length));
+diff --git a/src/java/com/android/internal/telephony/MessagingResponse.java b/src/java/com/android/internal/telephony/MessagingResponse.java
+index 19211e15f5b18f5bf450486b9186d2eab20e08eb..e8e0b6b5abec0828728509a614c00d27a0678093 100644
+--- a/src/java/com/android/internal/telephony/MessagingResponse.java
++++ b/src/java/com/android/internal/telephony/MessagingResponse.java
+@@ -170,6 +170,22 @@ public class MessagingResponse extends IRadioMessagingResponse.Stub {
+      * @param smsc Short Message Service Center address on the device
+      */
+     public void getSmscAddressResponse(RadioResponseInfo responseInfo, String smsc) {
++        if(smsc.contains("\"") || smsc.contains(",")) {
++            android.util.Log.e("PHH", "Got weird SMSC: " + smsc);
++            if (android.os.SystemProperties.getBoolean("persist.sys.phh.patch_smsc", true)) {
++                try {
++                    String[] a = smsc.split("\"");
++                    smsc = a[1];
++                } catch(Throwable t) {
++                    android.util.Log.e("PHH", "Failed parsing weird smsc", t);
++                    smsc = "";
++                }
++                android.util.Log.e("PHH", "Patched smsc " + smsc);
++            } else {
++                android.util.Log.e("PHH", "Skipping patching smsc");
++                smsc = "";
++            }
++        }
+         RadioResponse.responseString(HAL_SERVICE_MESSAGING, mRil, responseInfo, smsc);
+     }
+ 
+diff --git a/src/java/com/android/internal/telephony/RIL.java b/src/java/com/android/internal/telephony/RIL.java
+index 819609eb979d08ad151c8057dbac8d3506a7b610..f5486bed32d1365f1267222507abc632fb8b76e7 100644
+--- a/src/java/com/android/internal/telephony/RIL.java
++++ b/src/java/com/android/internal/telephony/RIL.java
+@@ -803,6 +803,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
+                 return null;
+             } else {
+                 IBinder binder;
++                serviceProxy.setServiceName(HIDL_SERVICE_NAME[mPhoneId]);
+                 switch (service) {
+                     case HAL_SERVICE_DATA:
+                         if (mMockModem == null) {
+diff --git a/src/java/com/android/internal/telephony/RadioNetworkProxy.java b/src/java/com/android/internal/telephony/RadioNetworkProxy.java
+index c2c7d740da65b82a42521a2f0b32018742c81cd2..93d4c81a1628861d5f7ca5e996f0ab1b4bdbb27d 100644
+--- a/src/java/com/android/internal/telephony/RadioNetworkProxy.java
++++ b/src/java/com/android/internal/telephony/RadioNetworkProxy.java
+@@ -32,6 +32,25 @@ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.stream.Collectors;
+ 
++// AIDL
++import vendor.samsung.hardware.radio.network.ISehRadioNetworkIndication;
++import vendor.samsung.hardware.radio.network.ISehRadioNetworkResponse;
++import vendor.samsung.hardware.radio.network.ISehRadioNetwork;
++import vendor.samsung.hardware.radio.network.SehCallDetails;
++import vendor.samsung.hardware.radio.network.SehCsgInfo;
++import vendor.samsung.hardware.radio.network.SehEriInfo;
++import vendor.samsung.hardware.radio.network.SehExtendedRegStateResult;
++import vendor.samsung.hardware.radio.network.SehOperatorInfo;
++import vendor.samsung.hardware.radio.network.SehPreferredNetworkInfo;
++import vendor.samsung.hardware.radio.network.SehRadioResponseInfo;
++import vendor.samsung.hardware.radio.network.SehRoamingNetworkInfo;
++import vendor.samsung.hardware.radio.network.SehSignalBar;
++import vendor.samsung.hardware.radio.network.SehVendorConfiguration;
++
++// HIDL
++import android.hardware.radio.V1_0.RadioResponseInfo;
++import vendor.samsung.hardware.radio.V2_2.ISehRadio;
++
+ /**
+  * A holder for IRadioNetwork.
+  * Use getAidl to get IRadioNetwork and call the AIDL implementations of the HAL APIs.
+@@ -79,6 +98,133 @@ public class RadioNetworkProxy extends RadioServiceProxy {
+         mNetworkProxy = network;
+         mIsAidl = true;
+ 
++        try {
++            var samsungIndication = new ISehRadioNetworkIndication.Stub() {
++                void l(String v) {
++                    android.util.Log.e("PHH-Radio", v);
++                }
++                public void acbInfo(int type, int[] acbInfo) {
++                    l("acbInfo");
++                }
++                public void callDetailsChanged(int type, SehCallDetails[] callDetails) {
++                    l("callDetailsChanged");
++                }
++                public void csFallback(int type, int state) {
++                    l("csFallback");
++                }
++                public void currentNetworkScanIsrequested(int type, byte mode) {
++                    l("currentNetworkScanIsrequested");
++                }
++                public void eriInfoReceived(int type, SehEriInfo eriInfo) {
++                    l("eriInfoReceived");
++                }
++                public void execute(int type, String cmd) {
++                    l("execute " + cmd);
++                }
++                public void extendedRegistrationState(int type, SehExtendedRegStateResult state) {
++                    l("extendedRegistrationState " + state);
++                    l("dataRegState = " + state.unprocessedDataRegState +
++                            ", voiceRegState = " + state.unprocessedVoiceRegState +
++                            ", isValid = " + state.isValid +
++                            ", snapshotStatus = " + state.snapshotStatus +
++                            ", dataRat = " + state.unprocessedDataRat +
++                            ", mobileOptionRat = " + state.mobileOptionalRat +
++                            ", imsEmergencyCallBarring = " + state.imsEmergencyCallBarring +
++                            ", isPsOnlyReg = " + state.isPsOnlyReg);
++                }
++                public void imsPreferenceChanged(int type, int[] imsPref) {
++                    l("imsPreferenceChanged");
++                }
++                public void needTurnOnRadioIndication(int type) {
++                    l("needTurnOnRadioIndication");
++                }
++                public void nrBearerAllocationChanged(int type, int status) {
++                    l("nrBearerAllocationChanged " + status);
++                }
++                public void nrIconTypeChanged(int type, int nrIconType) {
++                    l("nrIconTypeChanged " + nrIconType);
++                }
++                public void nrNetworkTypeAdded(int type, int nrNetworkType) {
++                    l("nrNetworkTypeAdded " + nrNetworkType);
++                }
++                public void roamingNetworkScanIsRequested(int type, byte[] scanData) {
++                    l("roamingNetworkScanIsRequested");
++                }
++                public void signalLevelInfoChanged(int type, SehSignalBar signalBarInfo) {
++                    l("signalLevelInfoChanged " + signalBarInfo);
++                }
++                public void vendorConfigurationChanged(int type, SehVendorConfiguration[] configurations) {
++                    l("vendorConfigurationChanged:");
++                    for(var c: configurations) {
++                        l(" - " + c.name + "=" + c.value);
++                    }
++                }
++                @Override
++                public String getInterfaceHash() {
++                    return ISehRadioNetworkIndication.HASH;
++                }
++
++                @Override
++                public int getInterfaceVersion() {
++                    return ISehRadioNetworkIndication.VERSION;
++                }
++            };
++
++            var samsungResponse = new ISehRadioNetworkResponse.Stub() {
++                private void l(String v) {
++                    android.util.Log.e("PHH-Radio", v);
++                }
++                public void emergencyControlResponse(SehRadioResponseInfo info) {}
++                public void emergencySearchResponse(SehRadioResponseInfo info, int respEmergenySearch) {}
++                public void getAvailableNetworksResponse(SehRadioResponseInfo info, SehOperatorInfo[] networksInfo) {}
++                public void getCnapResponse(SehRadioResponseInfo info, int m) {}
++                public void getCsgListResponse(SehRadioResponseInfo info, SehCsgInfo[] csgInfos) {}
++                public void getDisable2gResponse(SehRadioResponseInfo info, int isDisable) {}
++                public void getNrIconTypeResponse(SehRadioResponseInfo info, int nrIconType) {}
++                public void getNrModeResponse(SehRadioResponseInfo info, int nrMode) {}
++                public void getPreferredNetworkListResponse(SehRadioResponseInfo info, SehPreferredNetworkInfo[] infos) {}
++                public void getRoamingNetworkInfoViaBLEResponse(SehRadioResponseInfo info, SehRoamingNetworkInfo[] networkInfo) {}
++                public void getVendorSpecificConfigurationResponse(SehRadioResponseInfo info, SehVendorConfiguration configurations) {}
++                public void selectCsgManualResponse(SehRadioResponseInfo info) {}
++                public void sendEncodedUssdResponse(SehRadioResponseInfo info) {}
++                public void sendRequestRawResponse(SehRadioResponseInfo info, byte[] data) {}
++                public void sendRequestStringsResponse(SehRadioResponseInfo info, String[] data) {}
++                public void setCurrentNetworkInfoViaBLEResponse(SehRadioResponseInfo info) {}
++                public void setDisable2gResponse(SehRadioResponseInfo info) {}
++                public void setImsCallListResponse(SehRadioResponseInfo info) {}
++                public void setNrModeResponse(SehRadioResponseInfo info) {}
++                public void setPreferredNetworkListResponse(SehRadioResponseInfo info) {}
++                public void setRoamingNetworkInfoViaBLEResponse(SehRadioResponseInfo info) {}
++                public void setScanResultViaBLEResponse(SehRadioResponseInfo info) {}
++                public void setVendorSpecificConfigurationResponse(SehRadioResponseInfo info) {
++                    l("vendor-specific configuration response " + info);
++                }
++
++                @Override
++                public String getInterfaceHash() {
++                    return ISehRadioNetworkResponse.HASH;
++                }
++
++                @Override
++                public int getInterfaceVersion() {
++                    return ISehRadioNetworkResponse.VERSION;
++                }
++            };
++            var samsungHal =
++                ISehRadioNetwork.Stub.asInterface(
++                        android.os.ServiceManager.waitForDeclaredService(
++                            ISehRadioNetwork.DESCRIPTOR + "/" + mServiceName));
++            samsungHal.setResponseFunctions(samsungResponse, samsungIndication);
++            var conf = new SehVendorConfiguration[1];
++            conf[0] = new SehVendorConfiguration();
++            conf[0].name = "FW_READY";
++            conf[0].value = "1";
++            samsungHal.setVendorSpecificConfiguration(0x4242, conf);
++            android.util.Log.e("PHH", "Successfully got ISehRadioNetwork");
++        } catch(Throwable t) {
++            android.util.Log.e("PHH", "Failed getting ISehRadioNetwork", t);
++        }
++
+         Rlog.d(TAG, "AIDL initialized mHalVersion=" + mHalVersion);
+         return mHalVersion;
+     }
+@@ -616,6 +762,117 @@ public class RadioNetworkProxy extends RadioServiceProxy {
+         }
+     }
+ 
++    @Override
++    public void setHidl(HalVersion halVersion, android.hardware.radio.V1_4.IRadio radio) {
++        super.setHidl(halVersion, radio);
++        try {
++            var samsungResponse = new vendor.samsung.hardware.radio.V2_2.ISehRadioResponse.Stub() {
++public void getIccCardStatusResponse() {}
++public void supplyNetworkDepersonalizationResponse(RadioResponseInfo info) {}
++public void dialResponse(RadioResponseInfo info) {}
++public void getCurrentCallsResponse() {}
++public void getImsRegistrationStateResponse() {}
++public void setImsCallListResponse(RadioResponseInfo info) {}
++public void getPreferredNetworkListResponse() {}
++public void setPreferredNetworkListResponse(RadioResponseInfo info) {}
++public void sendEncodedUssdResponse(RadioResponseInfo info) {}
++public void getDisable2gResponse(RadioResponseInfo info, int isDisable) {}
++public void setDisable2gResponse(RadioResponseInfo info) {}
++public void getCnapResponse(RadioResponseInfo info, int m) {}
++public void getPhonebookStorageInfoResponse() {}
++public void getUsimPhonebookCapabilityResponse(RadioResponseInfo info, ArrayList<Integer> phonebookCapability) {}
++public void setSimOnOffResponse(RadioResponseInfo info) {}
++public void setSimInitEventResponse(RadioResponseInfo info) {}
++public void getSimLockInfoResponse() {}
++public void supplyIccPersonalizationResponse(RadioResponseInfo info) {}
++public void changeIccPersonalizationResponse(RadioResponseInfo info) {}
++public void getPhonebookEntryResponse() {}
++public void accessPhonebookEntryResponse(RadioResponseInfo info, int SimPhonmebookAccessResp) {}
++public void getCellBroadcastConfigResponse() {}
++public void emergencySearchResponse(RadioResponseInfo info, int respEmergencySearch) {}
++public void emergencyControlResponse(RadioResponseInfo info) {}
++public void getAtrResponse(RadioResponseInfo info, String atr) {}
++public void sendCdmaSmsExpectMoreResponse() {}
++public void sendSmsResponse() {}
++public void sendSMSExpectMoreResponse() {}
++public void sendCdmaSmsResponse( ){}
++public void sendImsSmsResponse() {}
++public void getStoredMsgCountFromSimResponse() {}
++public void readSmsFromSimResponse() {}
++public void writeSmsToSimResponse(RadioResponseInfo info, int index) {}
++public void setDataAllowedResponse(RadioResponseInfo info) {}
++public void getCsgListResponse() {}
++public void selectCsgManualResponse(RadioResponseInfo info) {}
++public void setMobileDataSettingResponse(RadioResponseInfo info) {}
++public void sendRequestRawResponse(RadioResponseInfo info, ArrayList<Byte> data) {}
++public void sendRequestStringsResponse(RadioResponseInfo info, ArrayList<String> data) {}
++public void setNrModeResponse(RadioResponseInfo info) {}
++public void getNrModeResponse(RadioResponseInfo info, int nrMode) {}
++public void getNrIconResponse(RadioResponseInfo info, int nrIconType) {}
++public void getIccCardStatusResponse_2_1(RadioResponseInfo info, vendor.samsung.hardware.radio.V2_1.SehCardStatus cardStatus) {}
++public void setNrModeResponse_2_2(RadioResponseInfo info) {}
++public void getVendorSpecificConfigurationResponse(RadioResponseInfo info, ArrayList<vendor.samsung.hardware.radio.V2_2.SehVendorConfiguration> configurations) {}
++public void setVendorSpecificConfigurationResponse(RadioResponseInfo info) {}
++            };
++            var samsungIndication = new vendor.samsung.hardware.radio.V2_2.ISehRadioIndication.Stub() {
++                private void l(String v) {
++                    android.util.Log.e("PHH-Radio", "Indication: " + v);
++                }
++                public void acbInfoChanged(int type, ArrayList<Integer> acbInfo) { l("acbInfoChanged"); }
++                public void csFallback(int type, int state) { l("csFallback"); }
++                public void imsPreferenceChanged(int type, ArrayList<Integer> imsPref) { l("imsPreferenceChanged"); }
++                public void voiceRadioBearerHandoverStatusChanged(int type, int state) { l("voiceRadioBearerHandoverStatusChanged"); }
++                public void timerStatusChangedInd(int type, ArrayList<Integer> eventNoti) { l("timerStatusChangedInd"); }
++                public void modemCapabilityIndication(int type, ArrayList<Byte> data) { l("modemCapabilityIndication"); }
++                public void needTurnOnRadioIndication(int type) { l("needTurnOnRadioIndication"); }
++                public void simPhonebookReadyIndication(int type) { l("simPhonebookReadyIndication"); }
++                public void phonebookInitCompleteIndication(int type) { l("phonebookInitCompleteIndication"); }
++                public void deviceReadyNoti(int type) { l("deviceReadyNoti"); }
++                public void stkSmsSendResultIndication(int type, int result) { l("stkSmsSendResultIndication"); }
++                public void stkCallControlResultIndication(int type, String cmd) { l("stkCallControlResultIndication"); }
++                public void simSwapStateChangedIndication(int type, int state) { l("simSwapStateChangedIndication"); }
++                public void simCountMismatchedIndication(int type, int state) { l("simCountMismatchedIndication"); }
++                public void simOnOffStateChangedNotify(int type, int mode) { l("simOnOffStateChangedNotify"); }
++                public void releaseCompleteMessageIndication(int type, vendor.samsung.hardware.radio.V2_0.SehSsReleaseComplete result) { l("releaseCompleteMessageIndication"); }
++                public void sapNotify(int type, ArrayList<Byte> data) { l("sapNotify"); }
++                public void nrBearerAllocationChanged(int type, int status) { l("nrBearerAllocationChanged"); }
++                public void nrNetworkTypeAdded(int type, int status) { l("nrNetworkTypeAdded"); }
++                public void rrcStateChanged(int type, vendor.samsung.hardware.radio.V2_0.SehRrcStateInfo state) { l("rrcStateChanged"); }
++                public void configModemCapabilityChangeNoti(int type, vendor.samsung.hardware.radio.V2_0.SehConfigModemCapability configModemCapa) { l("configModemCapabilityChangeNoti"); }
++                public void needApnProfileIndication(String select) { l("needApnProfileIndication");};
++                public int needSettingValueIndication(String key, String table) {
++                    l("needSettingValueIndication");
++                    return -1;
++                }
++                public void execute(int type, String cmd) { l("execute " + cmd); }
++                public void signalLevelInfoChanged(int type, vendor.samsung.hardware.radio.V2_0.SehSignalBar signalBarInfo) { l("signalLevelInfoChanged"); }
++                public void extendedRegistrationState(int type, vendor.samsung.hardware.radio.V2_0.SehExtendedRegStateResult state) { l("extendedRegistrationState"); }
++                public void needPacketUsage(String iface, needPacketUsageCallback hidl_cb) {
++                    hidl_cb.onValues(0, new vendor.samsung.hardware.radio.V2_0.SehPacketUsage());
++                }
++                public void nrIconTypeChanged(int type, int nrIconType) { l("nrIconTypeChanged " + nrIconType); }
++                public void callDetailsChanged(int type, ArrayList<vendor.samsung.hardware.radio.V2_0.SehCallDetails> callDetails) { l("callDetailsChanged"); }
++                public void vendorConfigurationChanged(int type, ArrayList<vendor.samsung.hardware.radio.V2_2.SehVendorConfiguration> configurations) { l("vendorConfigurationChanged"); }
++                public void eriInfoReceived(int type, vendor.samsung.hardware.radio.V2_2.SehEriInfo eriInfo) { l("eriInfoReceived"); }
++
++            };
++
++            var svc = ISehRadio.getService(mServiceName);
++            svc.setResponseFunction(samsungResponse, samsungIndication);
++
++            var args = new ArrayList<vendor.samsung.hardware.radio.V2_2.SehVendorConfiguration>();
++            var arg = new vendor.samsung.hardware.radio.V2_2.SehVendorConfiguration();
++            arg.name = "FW_READY";
++            arg.value = "1";
++            args.add(arg);
++
++            svc.setVendorSpecificConfiguration(0x3232, args);
++            android.util.Log.e("PHH-Radio", "HIDL FW_READY done");
++        } catch(Throwable t) {
++            android.util.Log.e("PHH-Radio", "Getting HIDL ISehRadio", t);
++        }
++    }
++
+     /**
+      * Call IRadioNetwork#startNetworkScan
+      * @param serial Serial number of request
+diff --git a/src/java/com/android/internal/telephony/RadioResponse.java b/src/java/com/android/internal/telephony/RadioResponse.java
+index ada45ec0f7c957c4ae1426bd13410f6e6fe45afa..f4043791e7ad5d5cad470ae453cc991cc11048d4 100644
+--- a/src/java/com/android/internal/telephony/RadioResponse.java
++++ b/src/java/com/android/internal/telephony/RadioResponse.java
+@@ -1237,6 +1237,22 @@ public class RadioResponse extends IRadioResponse.Stub {
+      * @param smsc Short Message Service Center address on the device
+      */
+     public void getSmscAddressResponse(RadioResponseInfo responseInfo, String smsc) {
++        if(smsc.contains("\"") || smsc.contains(",")) {
++            android.util.Log.e("PHH", "Got weird SMSC: " + smsc);
++            if (android.os.SystemProperties.getBoolean("persist.sys.phh.patch_smsc", true)) {
++                try {
++                    String[] a = smsc.split("\"");
++                    smsc = a[1];
++                } catch(Throwable t) {
++                    android.util.Log.e("PHH", "Failed parsing weird smsc", t);
++                    smsc = "";
++                }
++                android.util.Log.e("PHH", "Patched smsc " + smsc);
++            } else {
++                android.util.Log.e("PHH", "Skipping patching smsc");
++                smsc = "";
++            }
++        }
+         responseString(responseInfo, smsc);
+     }
+ 
+@@ -1871,6 +1887,8 @@ public class RadioResponse extends IRadioResponse.Stub {
+ 
+         if (rr != null) {
+             IccCardStatus iccCardStatus = RILUtils.convertHalCardStatus(cardStatus);
++            IccSlotPortMapping slotPortMapping = new IccSlotPortMapping();
++            iccCardStatus.mSlotPortMapping = slotPortMapping;
+             mRil.riljLog("responseIccCardStatus: from HIDL: " + iccCardStatus);
+             if (responseInfo.error == RadioError.NONE) {
+                 sendMessageResponse(rr.mResult, iccCardStatus);
+diff --git a/src/java/com/android/internal/telephony/RadioServiceProxy.java b/src/java/com/android/internal/telephony/RadioServiceProxy.java
+index 02fc7514841b97d420362bd09f9c129325bdc803..fa02d5202b4a2ff2b8e06ff8ec26e46970adb609 100644
+--- a/src/java/com/android/internal/telephony/RadioServiceProxy.java
++++ b/src/java/com/android/internal/telephony/RadioServiceProxy.java
+@@ -83,4 +83,9 @@ public abstract class RadioServiceProxy {
+     public String toString() {
+         return getClass().getSimpleName() + "[mHalVersion=" + mHalVersion + ']';
+     }
++
++    protected String mServiceName = null;
++    public void setServiceName(String serviceName) {
++        mServiceName = serviceName;
++    }
+ }
+diff --git a/src/java/com/android/internal/telephony/metrics/TelephonyMetrics.java b/src/java/com/android/internal/telephony/metrics/TelephonyMetrics.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..27638e5be9c008101c2f9b8f1e7a9af49d94f838
+--- /dev/null
++++ b/src/java/com/android/internal/telephony/metrics/TelephonyMetrics.java
+@@ -0,0 +1,68 @@
++/*
++ * Copyright (C) 2016 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.telephony.metrics;
++
++/**
++ * Stub TelephonyMetrics class.
++ *
++ * The full implementation was removed in android-16.0.0_r4. This stub
++ * exists solely to prevent NoSuchMethodError crashes in MediaTek IMS
++ * vendor blobs (com.mediatek.ims) that invoke these methods.
++ */
++public class TelephonyMetrics {
++
++    private static final TelephonyMetrics sInstance = new TelephonyMetrics();
++
++    public TelephonyMetrics() {
++    }
++
++    public static TelephonyMetrics getInstance() {
++        return sInstance;
++    }
++
++    public void writeRilSendSms(int phoneId, int rilSerial, int tech, int format) {
++        // No-op stub for MediaTek IMS compatibility
++    }
++
++    public synchronized void writeRilSendSms(int phoneId, int rilSerial, int tech, int format,
++            long messageId) {
++        // No-op stub for MediaTek IMS compatibility
++    }
++
++    /**
++     * No-op stub. Called by ImsRILAdapter.processResponseDoneInternal when
++     * processing solicited RIL responses.
++     */
++    public void writeOnRilSolicitedResponse(int phoneId, int rilSerial, int rilError,
++            int rilRequest, Object ret) {
++        // No-op stub for MediaTek IMS compatibility
++    }
++
++    /**
++     * No-op stub. Called by ImsRILAdapter when a RIL request times out.
++     */
++    public void writeOnRilTimeoutResponse(int phoneId, int rilSerial, int rilRequest) {
++        // No-op stub for MediaTek IMS compatibility
++    }
++
++    /**
++     * No-op stub. Called by ImsRILAdapter when answering a call.
++     */
++    public void writeRilAnswer(int phoneId, int rilSerial, int rilError, int rilRequest) {
++        // No-op stub for MediaTek IMS compatibility
++    }
++}
+diff --git a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+index 4c12127948d0a2ca08e391db1c72242180bb4766..d2958252b05fcd7f843d74a38ba940eed233849a 100644
+--- a/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
++++ b/src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java
+@@ -3321,7 +3321,22 @@ public class SubscriptionManagerService extends ISub.Stub {
+ 
+                 TelecomManager telecomManager = mContext.getSystemService(TelecomManager.class);
+                 if (telecomManager != null) {
+-                    telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
++                    PhoneAccountHandle currentHandle = telecomManager.getUserSelectedOutgoingPhoneAccount();
++                    log("[setDefaultVoiceSubId] current phoneAccountHandle=" + currentHandle);
++
++                    String currentPackageName =
++                        currentHandle == null ? null : currentHandle.getComponentName().getPackageName();
++                    boolean currentIsSim = "com.android.phone".equals(currentPackageName);
++                    // Do not override user selected outgoing calling account
++                    // if the user has selected a third-party app as default
++                    boolean shouldKeepOutgoingAccount = currentHandle != null && !currentIsSim;
++
++                    if (!shouldKeepOutgoingAccount) {
++                        telecomManager.setUserSelectedOutgoingPhoneAccount(newHandle);
++                        log("[setDefaultVoiceSubId] change to phoneAccountHandle=" + newHandle);
++                    } else {
++                        log("[setDefaultVoiceSubId] default phoneAccountHandle not changed.");
++                    }
+                 }
+ 
+                 updateDefaultSubId();
+diff --git a/src/java/com/android/internal/telephony/uicc/UiccSlot.java b/src/java/com/android/internal/telephony/uicc/UiccSlot.java
+index 110e953752c552306f3059d4abf18633a66c0b2d..27d5141577f72da455e5fd2eeeb99223b9ce8fff 100644
+--- a/src/java/com/android/internal/telephony/uicc/UiccSlot.java
++++ b/src/java/com/android/internal/telephony/uicc/UiccSlot.java
+@@ -28,6 +28,7 @@ import android.content.res.Resources;
+ import android.os.Handler;
+ import android.os.Message;
+ import android.os.PowerManager;
++import android.os.SystemProperties;
+ import android.os.UserHandle;
+ import android.telephony.SubscriptionInfo;
+ import android.telephony.SubscriptionManager;
+@@ -94,6 +95,7 @@ public class UiccSlot extends Handler {
+     private AnswerToReset mAtr;
+     private boolean mIsRemovable;
+     private MultipleEnabledProfilesMode mSupportedMepMode;
++    private int mSlotIndex;
+ 
+     // Map each available portIdx to phoneId
+     private HashMap<Integer, Integer> mPortIdxToPhoneId = new HashMap<>();
+@@ -122,12 +124,23 @@ public class UiccSlot extends Handler {
+      */
+     public void update(CommandsInterface ci, IccCardStatus ics, int phoneId, int slotIndex) {
+         synchronized (mLock) {
++            String forceSlots = SystemProperties.get("persist.sys.phh.force_euicc_slots", "");
+             mPortIdxToPhoneId.put(ics.mSlotPortMapping.mPortIndex, phoneId);
+             CardState oldState = mCardState.get(ics.mSlotPortMapping.mPortIndex);
+-            mCardState.put(ics.mSlotPortMapping.mPortIndex, ics.mCardState);
++            mSlotIndex = slotIndex;
+             mIccIds.put(ics.mSlotPortMapping.mPortIndex, ics.iccid);
+             parseAtr(ics.atr);
+             mIsRemovable = isSlotRemovable(slotIndex);
++
++            // Force CARDSTATE_PRESENT for eUICC slots when prop is set.
++            // Must run AFTER parseAtr() so mIsEuicc is set, and BEFORE
++            // mCardState.put() so the map reflects the override.
++            if (!forceSlots.isEmpty() && mIsEuicc
++                    && ics.mCardState == CardState.CARDSTATE_ABSENT) {
++                log(phoneId, "update: forcing CARDSTATE_PRESENT for eUICC slot");
++                ics.mCardState = CardState.CARDSTATE_PRESENT;
++            }
++            mCardState.put(ics.mSlotPortMapping.mPortIndex, ics.mCardState);
+             // Update supported MEP mode in IccCardStatus if the CardState is present.
+             if (ics.mCardState.isCardPresent()) {
+                 updateSupportedMepMode(ics.mSupportedMepMode);
+@@ -190,6 +203,15 @@ public class UiccSlot extends Handler {
+                         mUiccCard.update(mContext, ci, ics, phoneId);
+                     }
+                 }
++            } else if (!forceSlots.isEmpty() && mIsEuicc && mUiccCard == null) {
++                // Force create EuiccCard for eUICC even when card state is ABSENT
++                // so APDU-based EID loading can run and attempt to read the EID
++                if (DBG) {
++                    log(phoneId,
++                            "update: forcing EuiccCard creation despite ABSENT state");
++                }
++                mUiccCard = new EuiccCard(mContext, ci, ics, phoneId, mLock,
++                        getSupportedMepMode());
+             } else {
+                 if (mUiccCard != null) {
+                     mUiccCard.update(mContext, ci, ics, phoneId);
+@@ -205,6 +227,7 @@ public class UiccSlot extends Handler {
+     public void update(CommandsInterface[] ci, IccSlotStatus iss, int slotIndex) {
+         synchronized (mLock) {
+             IccSimPortInfo[] simPortInfos = iss.mSimPortInfos;
++            mSlotIndex = slotIndex;
+             parseAtr(iss.atr);
+             mEid = iss.eid;
+             mIsRemovable = isSlotRemovable(slotIndex);
+@@ -443,6 +466,15 @@ public class UiccSlot extends Handler {
+     }
+ 
+     private void checkIsEuiccSupported() {
++        String forceSlots = SystemProperties.get("persist.sys.phh.force_euicc_slots", "");
++        if (!forceSlots.isEmpty()) {
++            for (String s : forceSlots.split(",")) {
++                if (s.trim().equals(String.valueOf(mSlotIndex))) {
++                    mIsEuicc = true;
++                    return;
++                }
++            }
++        }
+         if (mAtr == null) {
+             mIsEuicc = false;
+             return;
+@@ -791,8 +823,14 @@ public class UiccSlot extends Handler {
+     @NonNull
+     @Override
+     public String toString() {
++        Map<Integer,String> printableIccIds = null;
++        try {
++            printableIccIds = getPrintableIccIds();
++        } catch(Throwable t) {
++            android.util.Log.e("PHH", "getPrintableIccIds failed", t);
++        }
+         StringBuilder sb = new StringBuilder("[UiccSlot: mActive=" + mActive
+-                + ", mIccId=" + getPrintableIccIds() + ", mIsEuicc=" + mIsEuicc
++                + ", mIccId=" + printableIccIds + ", mIsEuicc=" + mIsEuicc
+                 + ", MEP=" + isMultipleEnabledProfileSupported() + ", mPortIdxToPhoneId="
+                 + mPortIdxToPhoneId + ", mEid=" + Rlog.pii(TelephonyUtils.IS_DEBUGGABLE, mEid)
+                 + ", mCardState=" + mCardState + " mSupportedMepMode=" + mSupportedMepMode);

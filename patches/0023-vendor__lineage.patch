@@ -1,0 +1,29 @@
+diff --git a/config/common.mk b/config/common.mk
+index f927424a9574921f6944c4663d74a960633bbb8e..8d7446c9a9ef5f32153355b5d29cd64c7bc3a5a1 100644
+--- a/config/common.mk
++++ b/config/common.mk
+@@ -99,9 +99,9 @@ PRODUCT_PACKAGES += \
+ PRODUCT_COPY_FILES += \
+     vendor/lineage/config/permissions/org.lineageos.android.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/org.lineageos.android.xml
+ 
+-# Enforce privapp-permissions whitelist
++# Log privapp-permissions whitelist violations
+ PRODUCT_PRODUCT_PROPERTIES += \
+-    ro.control_privapp_permissions=enforce
++    ro.control_privapp_permissions=log
+ 
+ ifneq ($(TARGET_DISABLE_LINEAGE_SDK), true)
+ # Lineage SDK
+diff --git a/config/version.mk b/config/version.mk
+index 7b7e646e050e68be0f81c03a9874ba4763d3bdf3..f0a83e4fb81adafb93c7b221573e3c5a5d5dd87e 100644
+--- a/config/version.mk
++++ b/config/version.mk
+@@ -18,7 +18,7 @@ ifndef LINEAGE_BUILDTYPE
+ endif
+ 
+ # Filter out random types, so it'll reset to UNOFFICIAL
+-ifeq ($(filter RELEASE NIGHTLY SNAPSHOT EXPERIMENTAL,$(LINEAGE_BUILDTYPE)),)
++ifeq ($(filter RELEASE NIGHTLY SNAPSHOT EXPERIMENTAL VANILLA GAPPS,$(LINEAGE_BUILDTYPE)),)
+     LINEAGE_BUILDTYPE := UNOFFICIAL
+     LINEAGE_EXTRAVERSION :=
+ endif

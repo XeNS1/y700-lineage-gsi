@@ -1,0 +1,86 @@
+diff --git a/server/Controllers.cpp b/server/Controllers.cpp
+index 48d0c509a5cecc0f0869847734074d25251554ad..13538dd263c3adf775b87bb431b390f85beee807 100644
+--- a/server/Controllers.cpp
++++ b/server/Controllers.cpp
+@@ -326,7 +326,7 @@ void Controllers::init() {
+         // As such simply exit netd.  This may crash loop the system, but by failing
+         // to bootup we will trigger rollback and thus this offers us protection against
+         // a mainline update breaking things.
+-        exit(1);
++        // exit(1);
+     }
+     gLog.info("Enabling bandwidth control: %" PRId64 "us", s.getTimeAndResetUs());
+ 
+diff --git a/server/TetherController.cpp b/server/TetherController.cpp
+index b159d9587a79db7076e8afaaef9b9fef65ad6b4b..2ee70afd7ec88302eb425c99d8ed4eb41b84940b 100644
+--- a/server/TetherController.cpp
++++ b/server/TetherController.cpp
+@@ -406,9 +406,10 @@ int TetherController::setDnsForwarders(unsigned netId, char **servers, int numSe
+     mDnsmasqState.update_dns_cmd = std::move(daemonCmd);
+     if (mDaemonFd != -1) {
+         if (mDnsmasqState.sendAllState(mDaemonFd) != 0) {
+-            mDnsForwarders.clear();
+-            errno = EREMOTEIO;
+-            return -errno;
++            // on GSI builds dnsmasq may not be running; the modern tethering
++            // stack (NetworkStackService) provides its own DHCP/DNS server,
++            // so a dnsmasq communication failure is not fatal.
++            ALOGW("Failed to send DNS state to dnsmasq (non-fatal on GSI)");
+         }
+     }
+     return 0;
+@@ -446,7 +447,11 @@ bool TetherController::applyDnsInterfaces() {
+         mDnsmasqState.update_ifaces_cmd.clear();
+     } else {
+         mDnsmasqState.update_ifaces_cmd = std::move(daemonCmd);
+-        if (mDaemonFd != -1) return (mDnsmasqState.sendAllState(mDaemonFd) == 0);
++        if (mDaemonFd != -1) {
++            if (mDnsmasqState.sendAllState(mDaemonFd) != 0) {
++                ALOGW("Failed to send iface state to dnsmasq (non-fatal on GSI)");
++            }
++        }
+     }
+     return true;
+ }
+@@ -718,17 +723,23 @@ int TetherController::setForwardRules(bool add, const char *intIface, const char
+         "*raw\n"
+         "%s %s -i %s -m rpfilter --invert ! -s fe80::/64 -j DROP\n"
+         "COMMIT\n", op, LOCAL_RAW_PREROUTING, intIface);
+-    if (iptablesRestoreFunction(V6, rpfilterCmd, nullptr) == -1 && add) {
++    if (iptablesRestoreFunction(V6, rpfilterCmd, nullptr) == -1 && add && false) {
+         return -EREMOTEIO;
+     }
+ 
+-    std::vector<std::string> v4 = {
++    std::vector<std::string> v4Ftp = {
+             "*raw",
+-            StringPrintf("%s %s -p tcp --dport 21 -i %s -j CT --helper ftp", op,
+-                         LOCAL_RAW_PREROUTING, intIface),
++            StringPrintf("%s %s -p tcp --dport 21 -i %s -j CT --helper ftp",
++                            op, LOCAL_RAW_PREROUTING, intIface),
+             StringPrintf("%s %s -p tcp --dport 1723 -i %s -j CT --helper pptp", op,
+                          LOCAL_RAW_PREROUTING, intIface),
+-            "COMMIT",
++            "COMMIT\n",
++    };
++    if(iptablesRestoreFunction(V4, Join(v4Ftp, '\n'), nullptr) == -1) {
++            ALOGE("Failed adding iptables CT target on FTP.");
++    }
++
++    std::vector<std::string> v4 = {
+             "*filter",
+             StringPrintf("%s %s -i %s -o %s -m state --state ESTABLISHED,RELATED -g %s", op,
+                          LOCAL_FORWARD, extIface, intIface, LOCAL_TETHER_COUNTERS_CHAIN),
+diff --git a/server/main.cpp b/server/main.cpp
+index d27fd76a31634a815c4569c3e007db770b2baab7..b2f98c4f9f029cb382af8cd627e05dc3f9eb2ad5 100644
+--- a/server/main.cpp
++++ b/server/main.cpp
+@@ -142,7 +142,7 @@ int main() {
+ 
+     if (libnetd_updatable_init(cg2_path.c_str())) {
+         ALOGE("libnetd_updatable_init failed");
+-        exit(1);
++        //exit(1);
+     }
+     gLog.info("libnetd_updatable_init success");
+ 

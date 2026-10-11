@@ -1,0 +1,9 @@
+{
+  "manifest_projects": 1177,
+  "changed_projects": 37,
+  "new_files": 20,
+  "omitted_generated_files": 0,
+  "kernel_source_changes": false,
+  "fresh_build_verified": false,
+  "device_test": "Existing build reported working by maintainer on TB321FU; this export is not yet independently rebuilt"
+}

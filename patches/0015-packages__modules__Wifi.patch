@@ -1,0 +1,13 @@
+diff --git a/service/java/com/android/server/wifi/WifiGlobals.java b/service/java/com/android/server/wifi/WifiGlobals.java
+index 14984ba6507a7508f2fad4180e39e6b3fac41b7b..ff3eda560ed36295d9bac69dbeca18829ec30426 100644
+--- a/service/java/com/android/server/wifi/WifiGlobals.java
++++ b/service/java/com/android/server/wifi/WifiGlobals.java
+@@ -348,6 +348,8 @@ public class WifiGlobals {
+      * @return boolean true if auto-upgrade is enabled, false otherwise.
+      */
+     public boolean isWpa3SaeUpgradeEnabled() {
++        var prop = android.os.SystemProperties.get("persist.sys.phh.wifi_disable_sae", null);
++        if (prop != null && "true".equals(prop)) return false;
+         return mWifiResourceCache
+                 .getBoolean(R.bool.config_wifiSaeUpgradeEnabled);
+     }

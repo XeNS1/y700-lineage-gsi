@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <string name="y700_bypass_title">Bypass charging (Experimental)</string>
+    <string name="y700_bypass_tile_label">Bypass charging</string>
+    <string name="y700_bypass_description">Use external power without charging the battery. Experimental; turns off when the charger is disconnected.</string>
+    <string name="y700_bypass_on">On</string>
+    <string name="y700_bypass_off">Off</string>
+    <string name="y700_bypass_starting">Turning on…</string>
+    <string name="y700_bypass_settling">Waiting for battery current to settle…</string>
+    <string name="y700_bypass_stopping">Restoring charging…</string>
+    <string name="y700_bypass_unavailable">Checking charging controller…</string>
+    <string name="y700_bypass_unsupported">Unavailable on this device or firmware base</string>
+    <string name="y700_bypass_connect">Connect the charger. Bypass is off.</string>
+    <string name="y700_bypass_need_charge">The battery must be charging and below full charge.</string>
+    <string name="y700_bypass_capacity" formatted="false">Battery level must be between 20% and 99% to start.</string>
+    <string name="y700_bypass_temperature">Stopped: battery temperature reached 45 °C.</string>
+    <string name="y700_bypass_write_failed">The charging request was not accepted. Bypass is stopped.</string>
+    <string name="y700_bypass_telemetry">Stopped: battery or power readings are unavailable.</string>
+    <string name="y700_bypass_not_settled">Stopped: battery current did not settle.</string>
+    <string name="y700_bypass_discharge">Stopped: sustained battery discharge detected.</string>
+    <string name="y700_bypass_charge_continues">Stopped: the battery kept charging after the transition.</string>
+    <string name="y700_bypass_external">Charging was changed by another controller</string>
+    <string name="y700_bypass_restore_failed">Charging restore is not confirmed. The controller is retrying.</string>
+</resources>

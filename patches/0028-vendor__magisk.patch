@@ -1,0 +1,15 @@
+diff --git a/Magisk/native/jni/systemproperties/prop_area.cpp b/Magisk/native/jni/systemproperties/prop_area.cpp
+index b834935694ea6bb0b13e817f989dee4ff5102316..0aa2a642ade19d1bbdd23a3a018cd563e29646ce 100644
+--- a/Magisk/native/jni/systemproperties/prop_area.cpp
++++ b/Magisk/native/jni/systemproperties/prop_area.cpp
+@@ -37,6 +37,10 @@
+ 
+ #include <new>
+ 
++#ifndef __BIONIC_ALIGN
++#define __BIONIC_ALIGN(__value, __alignment) (((__value) + (__alignment) - 1) & ~((__alignment) - 1))
++#endif
++
+ #include <async_safe/log.h>
+ 
+ #include "system_properties/prop_area.h"

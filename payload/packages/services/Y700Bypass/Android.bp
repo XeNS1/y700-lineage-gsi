@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: Apache-2.0
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+aidl_interface {
+    name: "y700-bypass-aidl",
+    srcs: ["aidl/**/*.aidl"],
+    local_include_dir: "aidl",
+    unstable: true,
+    backend: {
+        java: { enabled: true, platform_apis: true },
+        cpp: { enabled: false },
+        ndk: { enabled: true },
+    },
+}
+cc_library_static {
+    name: "liby700_bypass_core",
+    host_supported: true,
+    srcs: ["src/Controller.cpp"],
+    export_include_dirs: ["src"],
+    cpp_std: "c++17",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}
+cc_binary {
+    name: "y700_bypassd",
+    srcs: ["src/Service.cpp", "src/Platform.cpp"],
+    static_libs: ["liby700_bypass_core"],
+    shared_libs: ["libbinder_ndk", "libbase", "liblog", "libselinux", "y700-bypass-aidl-ndk"],
+    init_rc: ["y700_bypass.rc"],
+    cpp_std: "c++17",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}
+cc_test_host {
+    name: "y700_bypass_core_test",
+    srcs: ["tests/ControllerTest.cpp"],
+    static_libs: ["liby700_bypass_core"],
+    gtest: false,
+    cpp_std: "c++17",
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}

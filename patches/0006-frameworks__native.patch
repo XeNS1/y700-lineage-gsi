@@ -1,0 +1,1416 @@
+diff --git a/cmds/installd/migrate_legacy_obb_data.sh b/cmds/installd/migrate_legacy_obb_data.sh
+index 7399681c3e65d650cca698a602f4e63d768f5650..9d5b73eae2fb2e797a17507f8a1ee5dcb6538297 100644
+--- a/cmds/installd/migrate_legacy_obb_data.sh
++++ b/cmds/installd/migrate_legacy_obb_data.sh
+@@ -18,7 +18,7 @@
+ rm -rf /data/media/0/Android/obb/test_probe
+ mkdir -p /data/media/0/Android/obb/
+ touch /data/media/0/Android/obb/test_probe
+-if ! test -f /data/media/0/Android/obb/test_probe ; then
++if ! test -f /data/media/0/Android/obb/test_probe  || [ "$(adb shell getprop ro.vndk.version)" -le 28 ]; then
+   log -p i -t migrate_legacy_obb_data "No support for 'unshared_obb'. Not migrating"
+   rm -rf /data/media/0/Android/obb/test_probe
+   exit 0
+diff --git a/include/powermanager/PowerHalLoader.h b/include/powermanager/PowerHalLoader.h
+index ab66336738e26ae77d12fe31d5a29245ffe56fcf..32cc39b76b1322de19d4de082723e202e55adaa9 100644
+--- a/include/powermanager/PowerHalLoader.h
++++ b/include/powermanager/PowerHalLoader.h
+@@ -22,6 +22,7 @@
+ #include <android/hardware/power/1.1/IPower.h>
+ #include <android/hardware/power/1.2/IPower.h>
+ #include <android/hardware/power/1.3/IPower.h>
++#include <vendor/samsung/hardware/miscpower/2.0/ISehMiscPower.h>
+ 
+ namespace android {
+ 
+@@ -36,6 +37,7 @@ public:
+     static sp<hardware::power::V1_1::IPower> loadHidlV1_1();
+     static sp<hardware::power::V1_2::IPower> loadHidlV1_2();
+     static sp<hardware::power::V1_3::IPower> loadHidlV1_3();
++    static sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> loadHidlSeh();
+     // Returns aidl interface version, or 0 if AIDL is not used
+     static int32_t getAidlVersion();
+ 
+@@ -46,6 +48,7 @@ private:
+     static sp<hardware::power::V1_1::IPower> gHalHidlV1_1 GUARDED_BY(gHalMutex);
+     static sp<hardware::power::V1_2::IPower> gHalHidlV1_2 GUARDED_BY(gHalMutex);
+     static sp<hardware::power::V1_3::IPower> gHalHidlV1_3 GUARDED_BY(gHalMutex);
++    static sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> gHalHidlSeh GUARDED_BY(gHalMutex);
+ 
+     static sp<hardware::power::V1_0::IPower> loadHidlV1_0Locked()
+             EXCLUSIVE_LOCKS_REQUIRED(gHalMutex);
+diff --git a/include/powermanager/PowerHalWrapper.h b/include/powermanager/PowerHalWrapper.h
+index 17a4cd4eff3b4864f14b787ec36bc250e0a1add3..e7b12d922fd6085de78d8228dc0bb60e33d3c6ed 100644
+--- a/include/powermanager/PowerHalWrapper.h
++++ b/include/powermanager/PowerHalWrapper.h
+@@ -32,6 +32,7 @@
+ #include <powermanager/PowerHintSessionWrapper.h>
+ 
+ #include <binder/Status.h>
++#include <vendor/samsung/hardware/miscpower/2.0/ISehMiscPower.h>
+ 
+ #include <utility>
+ 
+@@ -153,7 +154,10 @@ protected:
+ // Wrapper for the AIDL Power HAL.
+ class AidlHalWrapper : public EmptyHalWrapper {
+ public:
+-    explicit AidlHalWrapper(std::shared_ptr<hal::IPower> handle) : mHandle(std::move(handle)) {}
++    explicit AidlHalWrapper(std::shared_ptr<hal::IPower> handle,
++            sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> sehHandle)
++          : mHandle(std::move(handle)),
++            mHandleSeh(std::move(sehHandle)) {}
+     ~AidlHalWrapper() override = default;
+ 
+     HalResult<void> setBoost(hal::Boost boost, int32_t durationMs) override;
+@@ -180,12 +184,44 @@ private:
+     std::mutex mBoostMutex;
+     std::mutex mModeMutex;
+     std::shared_ptr<hal::IPower> mHandle;
+-    std::array<HalSupport, static_cast<int32_t>(*(ndk::enum_range<hal::Boost>().end() - 1)) + 1>
++    sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> mHandleSeh;
++    std::array<HalSupport,
++               static_cast<int32_t>(
++                       *(ndk::enum_range<hal::Boost>().end() - 1)) +
++                       1>
+             mBoostSupportedArray GUARDED_BY(mBoostMutex) = {HalSupport::UNKNOWN};
+     std::array<HalSupport, static_cast<int32_t>(*(ndk::enum_range<hal::Mode>().end() - 1)) + 1>
+             mModeSupportedArray GUARDED_BY(mModeMutex) = {HalSupport::UNKNOWN};
+ };
+ 
++class HidlHalWrapperSeh : public EmptyHalWrapper {
++public:
++    explicit HidlHalWrapperSeh(sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> hal1,
++            sp<android::hardware::power::V1_1::IPower> hal2,
++            sp<android::hardware::power::V1_0::IPower> hal3)
++    : mHandleSeh(std::move(hal1)),
++        mHandle11(std::move(hal2)),
++        mHandle10(std::move(hal3)) {}
++    ~HidlHalWrapperSeh() = default;
++
++    HalResult<void> setBoost(aidl::android::hardware::power::Boost boost, int32_t durationMs) override;
++    HalResult<void> setMode(aidl::android::hardware::power::Mode mode, bool enabled) override;
++    HalResult<std::shared_ptr<PowerHintSessionWrapper>> createHintSession(
++            int32_t tgid, int32_t uid, const std::vector<int32_t>& threadIds,
++            int64_t durationNanos) override;
++    HalResult<int64_t> getHintSessionPreferredRate() override;
++
++protected:
++    HalResult<void> sendPowerHint(hardware::power::V1_0::PowerHint hintId, uint32_t data);
++
++private:
++    sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> mHandleSeh;
++    sp<android::hardware::power::V1_1::IPower> mHandle11;
++    sp<android::hardware::power::V1_0::IPower> mHandle10;
++    HalResult<void> setInteractive(bool enabled);
++    HalResult<void> setFeature(hardware::power::V1_0::Feature feature, bool enabled);
++};
++
+ }; // namespace power
+ 
+ }; // namespace android
+diff --git a/libs/gui/BLASTBufferQueue.cpp b/libs/gui/BLASTBufferQueue.cpp
+index 05fbc148d2c99287b4914a7fea2025491fdbb303..4f40a7cb13ea3960f3b244c988a8029bf8c6b2d8 100644
+--- a/libs/gui/BLASTBufferQueue.cpp
++++ b/libs/gui/BLASTBufferQueue.cpp
+@@ -41,6 +41,7 @@
+ 
+ #include <private/gui/ComposerService.h>
+ #include <private/gui/ComposerServiceAIDL.h>
++#include <cutils/properties.h>
+ 
+ #include <android-base/thread_annotations.h>
+ 
+@@ -49,6 +50,14 @@
+ using namespace com::android::graphics::libgui;
+ using namespace std::chrono_literals;
+ 
++static bool sCheckedProps = false;
++static bool sSamsungFod = false;
++static void init_fod_props() {
++    if(sCheckedProps) return;
++    sCheckedProps = true;
++    sSamsungFod = property_get_bool("persist.sys.phh.fod.samsung", false);
++}
++
+ namespace {
+ 
+ template <class Mutex>
+@@ -194,10 +203,17 @@ void BLASTBufferItemConsumer::resizeFrameEventHistory(size_t newSize) {
+ void BLASTBufferQueue::initialize() {
+     std::lock_guard _lock{mMutex};
+     createBufferQueue(&mProducer, &mConsumer);
++    uint64_t usage = GraphicBuffer::USAGE_HW_COMPOSER |
++        GraphicBuffer::USAGE_HW_TEXTURE;
++
++    init_fod_props();
++    if(sSamsungFod && mName.find("SurfaceView[UdfpsControllerOverlay]") != std::string::npos) {
++           usage |= 0x400000000LL;
++    }
++
+     mBufferItemConsumer =
+             sp<BLASTBufferItemConsumer>::make(mProducer, mConsumer,
+-                                              GraphicBuffer::USAGE_HW_COMPOSER |
+-                                                      GraphicBuffer::USAGE_HW_TEXTURE,
++                                              usage,
+                                               1, false, wp<BLASTBufferQueue>::fromExisting(this));
+     // since the adapter is in the client process, set dequeue timeout
+     // explicitly so that dequeueBuffer will block
+@@ -222,10 +238,6 @@ void BLASTBufferQueue::initialize() {
+                 if (callbackCopy) callbackCopy(reason);
+             },
+             this);
+-
+-    // safe default, most producers are expected to override this
+-    mProducer->setMaxDequeuedBufferCount(2);
+-
+     BQA_LOGV("BLASTBufferQueue created");
+ }
+ 
+@@ -261,6 +273,11 @@ BLASTBufferQueue::~BLASTBufferQueue() {
+ 
+ void BLASTBufferQueue::onFirstRef() {
+     initialize();
++    // safe default, most producers are expected to override this.
++    // call after initialize() returns so the BBQ mMutex is no longer held;
++    // setMaxDequeuedBufferCount calls back into BBQ::resizeFrameEventHistory which
++    // re-enters mMutex and would deadlock if invoked from inside initialize().
++    mProducer->setMaxDequeuedBufferCount(2);
+ }
+ 
+ void BLASTBufferQueue::update(const sp<SurfaceControl>& surface, uint32_t width, uint32_t height,
+diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
+index cabc1773e062ecaa263061be6aae10a23631d39e..6adae2d7dbabe6d40ad1fe1553ce8d7decdf4240 100644
+--- a/libs/gui/Surface.cpp
++++ b/libs/gui/Surface.cpp
+@@ -26,6 +26,9 @@
+ #include <deque>
+ #include <mutex>
+ #include <thread>
++#include <sys/ioctl.h>
++#include <fcntl.h>
++#include <unistd.h>
+ 
+ #include <inttypes.h>
+ 
+@@ -36,6 +39,8 @@
+ #include <gui/LayerState.h>
+ #include <private/gui/ComposerService.h>
+ #include <private/gui/ComposerServiceAIDL.h>
++#include <android-base/properties.h>
++#include <binder/IPCThreadState.h>
+ #endif
+ 
+ #include <android/native_window.h>
+@@ -104,6 +109,37 @@ bool isInterceptorRegistrationOp(int op) {
+ 
+ } // namespace
+ 
++#define GED_MAGIC 'g'
++#define GED_BRIDGE_COMMAND_GPU_TIMESTAMP      103
++#define GED_IOWR(INDEX)  _IOWR(GED_MAGIC, INDEX, GED_BRIDGE_PACKAGE)
++#define GED_BRIDGE_IO_GPU_TIMESTAMP \
++    GED_IOWR(GED_BRIDGE_COMMAND_GPU_TIMESTAMP)
++typedef struct _GED_BRIDGE_PACKAGE {
++    unsigned int ui32FunctionID;
++    int i32Size;
++    void *pvParamIn;
++    int i32InBufferSize;
++    void *pvParamOut;
++    int i32OutBufferSize;
++} GED_BRIDGE_PACKAGE;
++
++struct GED_BRIDGE_IN_GPU_TIMESTAMP {
++    int pid;
++    uint64_t ullWnd;
++    int32_t i32FrameID;
++    int fence_fd;
++    int QedBuffer_length;
++    int isSF;
++};
++
++struct GED_BRIDGE_OUT_GPU_TIMESTAMP {
++    int eError;
++    int is_ged_kpi_enabled;
++};
++
++static int doMtkGedKpi = -1;
++static int ged_fd = -1;
++
+ Surface::ProducerDeathListenerProxy::ProducerDeathListenerProxy(wp<SurfaceListener> surfaceListener)
+       : mSurfaceListener(surfaceListener) {}
+ 
+@@ -175,6 +211,47 @@ Surface::Surface(const sp<IGraphicBufferProducer>& bufferProducer, bool controll
+     mSwapIntervalZero = false;
+     mMaxBufferCount = NUM_BUFFER_SLOTS;
+     mSurfaceControlHandle = surfaceControlHandle;
++
++    if (doMtkGedKpi == -1) {
++        doMtkGedKpi = android::base::GetIntProperty("persist.sys.phh.mtk_ged_kpi", 0);
++    }
++
++    if (ged_fd == -1 && doMtkGedKpi == 1) {
++        ALOGE("Opening ged");
++        ged_fd = open("/proc/ged", O_RDONLY);
++        ALOGE("Opening ged ret = %d", ged_fd);
++        {
++        struct GED_BRIDGE_IN_GPU_TIMESTAMP in = {
++            .pid = 0,
++            //.ullWnd = (uint64_t)(intptr_t)this,
++                .ullWnd = 0,
++                .i32FrameID = 0,
++            .fence_fd = 0,
++            .isSF = 0,
++            .QedBuffer_length = 0,
++        };
++        struct GED_BRIDGE_OUT_GPU_TIMESTAMP out;
++        memset(&in, 0, sizeof(in));
++        GED_BRIDGE_PACKAGE package = {
++            .ui32FunctionID = GED_BRIDGE_IO_GPU_TIMESTAMP,
++            .i32Size = sizeof(GED_BRIDGE_PACKAGE),
++            .pvParamIn = &in,
++            .i32InBufferSize = sizeof(in),
++            .pvParamOut = &out,
++            .i32OutBufferSize = sizeof(out),
++        };
++        if (ged_fd >= 0) {
++            int ret = ioctl(ged_fd, GED_BRIDGE_IO_GPU_TIMESTAMP, &package);
++            ALOGE("First null timestamp ioctl returned %d %d %d", ret, out.eError, out.is_ged_kpi_enabled);
++            if (out.is_ged_kpi_enabled != 1) {
++                ALOGE("is_ged_kpi_enabled reported disabled");
++                doMtkGedKpi = 0;
++            }
++        } else {
++            ALOGE("No /proc/ged");
++        }
++        }
++    }
+ }
+ 
+ Surface::~Surface() {
+@@ -754,6 +831,37 @@ int Surface::dequeueBuffer(sp<GraphicBuffer>* buffer, int* fenceFd) {
+         }
+     }
+ 
++    if (mGraphicBufferProducer != nullptr && ged_fd >= 0) {
++        uint64_t uniqueId;
++        mGraphicBufferProducer->getUniqueId(&uniqueId);
++
++        const int32_t dupFenceFd = fence->isValid() ? fence->dup() : -1;
++
++        struct GED_BRIDGE_IN_GPU_TIMESTAMP in = {
++            .pid = mPid,
++            .ullWnd = uniqueId,
++            .i32FrameID = static_cast<int32_t>(reinterpret_cast<intptr_t>(gbuf->handle)) & 0x3fffffff,
++            .fence_fd = dupFenceFd,
++            .isSF = mIsSurfaceFlinger ? 1 : 0,
++            .QedBuffer_length = -2,
++        };
++        struct GED_BRIDGE_OUT_GPU_TIMESTAMP out;
++        memset(&out, 0, sizeof(out));
++        GED_BRIDGE_PACKAGE package = {
++            .ui32FunctionID = GED_BRIDGE_IO_GPU_TIMESTAMP,
++            .i32Size = sizeof(GED_BRIDGE_PACKAGE),
++            .pvParamIn = &in,
++            .i32InBufferSize = sizeof(in),
++            .pvParamOut = &out,
++            .i32OutBufferSize = sizeof(out),
++        };
++
++        int ret = ioctl(ged_fd, GED_BRIDGE_IO_GPU_TIMESTAMP, &package);
++        ALOGV("GPU timestamp ioctl returned %d %d %d %d", ret, out.eError, out.is_ged_kpi_enabled, in.i32FrameID);
++
++        close(dupFenceFd);
++    }
++
+     if (fence->isValid()) {
+         *fenceFd = fence->dup();
+         if (*fenceFd == -1) {
+@@ -1323,6 +1431,61 @@ void Surface::onBufferQueuedLocked(int slot, sp<Fence> fence,
+ 
+     mQueueBufferCondition.broadcast();
+ 
++    if (mGraphicBufferProducer != nullptr && ged_fd >= 0) {
++        sp<GraphicBuffer>& gbuf(mSlots[slot].buffer);
++        uint64_t uniqueId;
++        mGraphicBufferProducer->getUniqueId(&uniqueId);
++
++        const int32_t dupFenceFd = fence->isValid() ? fence->dup() : -1;
++        // onQueue
++        {
++            struct GED_BRIDGE_IN_GPU_TIMESTAMP in = {
++                .pid = mPid,
++                .ullWnd = uniqueId,
++                .i32FrameID = static_cast<int32_t>(reinterpret_cast<intptr_t>(gbuf->handle)) & 0x3fffffff,
++                .fence_fd = dupFenceFd,
++                .isSF = mIsSurfaceFlinger ? 1 : 0,
++                .QedBuffer_length = static_cast<int>(output.numPendingBuffers),
++            };
++            struct GED_BRIDGE_OUT_GPU_TIMESTAMP out;
++            memset(&out, 0, sizeof(out));
++            GED_BRIDGE_PACKAGE package = {
++                .ui32FunctionID = GED_BRIDGE_IO_GPU_TIMESTAMP,
++                .i32Size = sizeof(GED_BRIDGE_PACKAGE),
++                .pvParamIn = &in,
++                .i32InBufferSize = sizeof(in),
++                .pvParamOut = &out,
++                .i32OutBufferSize = sizeof(out),
++            };
++            int ret = ioctl(ged_fd, GED_BRIDGE_IO_GPU_TIMESTAMP, &package);
++            ALOGV("GPU timestamp ioctl returned %d %d %d", ret, out.eError, in.i32FrameID);
++        }
++        // acquire
++        {
++            struct GED_BRIDGE_IN_GPU_TIMESTAMP in = {
++                .pid = mPid,
++                .isSF = mIsSurfaceFlinger ? 1 : 0,
++                .ullWnd = uniqueId,
++                .i32FrameID = static_cast<int32_t>(reinterpret_cast<intptr_t>(gbuf->handle)) & 0x3fffffff,
++                .fence_fd = dupFenceFd,
++                .QedBuffer_length = -1,
++            };
++            struct GED_BRIDGE_OUT_GPU_TIMESTAMP out;
++            memset(&out, 0, sizeof(out));
++            GED_BRIDGE_PACKAGE package = {
++                .ui32FunctionID = GED_BRIDGE_IO_GPU_TIMESTAMP,
++                .i32Size = sizeof(GED_BRIDGE_PACKAGE),
++                .pvParamIn = &in,
++                .i32InBufferSize = sizeof(in),
++                .pvParamOut = &in,
++                .i32OutBufferSize = sizeof(out),
++            };
++            int ret = ioctl(ged_fd, GED_BRIDGE_IO_GPU_TIMESTAMP, &package);
++            ALOGV("GPU timestamp ioctl returned %d %d %d", ret, out.eError, in.i32FrameID);
++        }
++        close(dupFenceFd);
++    }
++
+     if (CC_UNLIKELY(atrace_is_tag_enabled(ATRACE_TAG_GRAPHICS))) {
+         static gui::FenceMonitor gpuCompletionThread("GPU completion");
+         gpuCompletionThread.queueFence(fence);
+@@ -2196,6 +2359,45 @@ int Surface::connect(int api, const sp<SurfaceListener>& listener, bool reportBu
+         SURF_LOGE_IF(idErr != NO_ERROR, "Unable to get ID from IGBP: %d", idErr);
+         mIsConnected = true;
+     }
++    // For MTK GED KPI, we need to grab the Surface owner's PID
++    // and also know whether that owner is surfaceflinger
++    if (api == NATIVE_WINDOW_API_EGL && ged_fd >= 0) {
++        IPCThreadState *ipc = IPCThreadState::selfOrNull();
++        const sp<IBinder>& token = IInterface::asBinder(mGraphicBufferProducer);
++        mPid =  (token != NULL && NULL != token->localBinder())
++            ? getpid()
++            : (ipc != nullptr)?ipc->getCallingPid():-1;
++
++        // We've got caller PID. Now checking whether it is surfaceflinger
++        char cmdline[128];
++        char path[128];
++        snprintf(path, sizeof(path)-1, "/proc/%d/cmdline", mPid);
++        int fd = open(path, O_RDONLY);
++        read(fd, cmdline, sizeof(cmdline)-1);
++        // Normally cmdline is already \0-separated, but well
++        for(unsigned i=0; i<sizeof(cmdline); i++)
++            if(cmdline[i] == '\n')
++                cmdline[i] = 0;
++        cmdline[sizeof(cmdline)-1] = 0;
++
++        close(fd);
++
++        // Truncate to last / (also called basename)
++        const char *c = strrchr(cmdline, '/');
++        if (c != nullptr) {
++            c = c+1;
++        } else {
++            c = cmdline;
++        }
++        if(strcmp(c, "surfaceflinger") == 0) {
++            ALOGE("is surfaceflinger = 1");
++            mIsSurfaceFlinger = true;
++        } else {
++            ALOGE("is surfaceflinger = 0");
++            mIsSurfaceFlinger = false;
++        }
++    }
++
+     if (!err && api == NATIVE_WINDOW_API_CPU) {
+         mConnectedToCpu = true;
+         // Clear the dirty region in case we're switching from a non-CPU API
+diff --git a/libs/gui/include/gui/Surface.h b/libs/gui/include/gui/Surface.h
+index 9a6e75c333e7a0a07cd190d1e60555bc1f72b6a6..d7c51d7d7764324f518f93ac54c62073786788c7 100644
+--- a/libs/gui/include/gui/Surface.h
++++ b/libs/gui/include/gui/Surface.h
+@@ -761,6 +761,9 @@ protected:
+     // Buffers that are successfully dequeued/attached and handed to clients
+     std::unordered_set<int> mDequeuedSlots;
+ 
++    pid_t mPid;
++    bool mIsSurfaceFlinger;
++
+     // Indicates whether this surface holds the mouse cursor, and subsequently determines whether
+     // the GRALLOC_USAGE_CURSOR usage flag should be set on the buffer created when this surface is
+     // locked.
+diff --git a/libs/sensor/Sensor.cpp b/libs/sensor/Sensor.cpp
+index 16a932e7e058107753a5d22f98e766c5b4896674..ec3544f50d468f9788f28b6556f1ee14ebc68d61 100644
+--- a/libs/sensor/Sensor.cpp
++++ b/libs/sensor/Sensor.cpp
+@@ -453,6 +453,7 @@ const String8& Sensor::getStringType() const {
+ }
+ 
+ const String8& Sensor::getRequiredPermission() const {
++    if (mRequiredPermission == "com.samsung.permission.SSENSOR") return mFakeRequiredPermission;
+     return mRequiredPermission;
+ }
+ 
+diff --git a/libs/sensor/include/sensor/Sensor.h b/libs/sensor/include/sensor/Sensor.h
+index bae8a1380b25cf816e1593ce387a2c42677e1d3d..afaafb321e8d9dd47566ac109f57a5dd363511cd 100644
+--- a/libs/sensor/include/sensor/Sensor.h
++++ b/libs/sensor/include/sensor/Sensor.h
+@@ -125,6 +125,7 @@ private:
+     uint32_t mFifoMaxEventCount;
+     String8 mStringType;
+     String8 mRequiredPermission;
++    String8 mFakeRequiredPermission;
+     bool mRequiredPermissionRuntime = false;
+     int32_t mRequiredAppOp;
+     int32_t mMaxDelay;
+diff --git a/libs/ui/Gralloc2.cpp b/libs/ui/Gralloc2.cpp
+index 41306b51f62d29f3ec528bd2b7048b12c97e3a97..3badc796068df00cbd77ef57253d99461c002a3c 100644
+--- a/libs/ui/Gralloc2.cpp
++++ b/libs/ui/Gralloc2.cpp
+@@ -115,7 +115,6 @@ status_t Gralloc2Mapper::validateBufferDescriptorInfo(
+     if (descriptorInfo->usage & ~validUsageBits) {
+         ALOGE("buffer descriptor contains invalid usage bits 0x%" PRIx64,
+               descriptorInfo->usage & ~validUsageBits);
+-        return BAD_VALUE;
+     }
+ 
+     // Gralloc2 implementations never understand non-BLOB with GPU_DATA_BUFFER
+diff --git a/libs/ui/Gralloc3.cpp b/libs/ui/Gralloc3.cpp
+index e9aa9c8d54bfc71d135480ff3c9ed70fa2bbef19..f29ce686c296a8ecf345a2dfe37fbacebf93b0a3 100644
+--- a/libs/ui/Gralloc3.cpp
++++ b/libs/ui/Gralloc3.cpp
+@@ -106,7 +106,6 @@ status_t Gralloc3Mapper::validateBufferDescriptorInfo(
+     if (descriptorInfo->usage & ~validUsageBits) {
+         ALOGE("buffer descriptor contains invalid usage bits 0x%" PRIx64,
+               descriptorInfo->usage & ~validUsageBits);
+-        return BAD_VALUE;
+     }
+ 
+     // Gralloc3 implementations never understand non-BLOB with GPU_DATA_BUFFER
+diff --git a/libs/ui/Gralloc4.cpp b/libs/ui/Gralloc4.cpp
+index f1322f1e4c58a70158433a5c33d91cb365734c24..c3ff48a26284c6cd6b93057de81ab176209830b2 100644
+--- a/libs/ui/Gralloc4.cpp
++++ b/libs/ui/Gralloc4.cpp
+@@ -129,7 +129,6 @@ static status_t validateBufferDescriptorInfo(IMapper::BufferDescriptorInfo* desc
+     if (descriptorInfo->usage & ~validUsageBits) {
+         ALOGE("buffer descriptor contains invalid usage bits 0x%" PRIx64,
+               descriptorInfo->usage & ~validUsageBits);
+-        return BAD_VALUE;
+     }
+ 
+     // Combinations that are only allowed with gralloc 4.1.
+diff --git a/opengl/libs/EGL/Loader.cpp b/opengl/libs/EGL/Loader.cpp
+index 567022c12fe8b461463a0cb60983d250d2dd387d..ef39addf969c5a35b391b622e3016ec2955538aa 100644
+--- a/opengl/libs/EGL/Loader.cpp
++++ b/opengl/libs/EGL/Loader.cpp
+@@ -289,7 +289,6 @@ void* Loader::open(egl_connection_t* cnx) {
+     }
+ 
+     // Finally, try to load default driver.
+-    bool failToLoadFromDriverSuffixProperty = false;
+     if (!hnd) {
+         // Start by searching for the library name appended by the system
+         // properties of the GLES userspace driver in both locations.
+@@ -304,7 +303,6 @@ void* Loader::open(egl_connection_t* cnx) {
+             hnd = attempt_to_load_system_driver(cnx, prop.c_str(), true);
+             if (!hnd) {
+                 ALOGD("Failed to load drivers from property %s with value %s", key, prop.c_str());
+-                failToLoadFromDriverSuffixProperty = true;
+             }
+ 
+             // Abort regardless of whether subsequent properties are set, the value must be set
+@@ -322,8 +320,7 @@ void* Loader::open(egl_connection_t* cnx) {
+         hnd = attempt_to_load_system_driver(cnx, nullptr, true);
+     }
+ 
+-    if (!hnd && !failToLoadFromDriverSuffixProperty &&
+-        property_get_int32("ro.vendor.api_level", 0) < __ANDROID_API_U__) {
++    if (!hnd) {
+         // Still can't find the graphics drivers with the exact name. This time try to use wildcard
+         // matching if the device is launched before Android 14.
+         hnd = attempt_to_load_system_driver(cnx, nullptr, false);
+diff --git a/services/gpuservice/gpumem/GpuMem.cpp b/services/gpuservice/gpumem/GpuMem.cpp
+index d0783df109260c899aa9f8b6838c61ac50e33eac..cdc4094b2742ef646cf434a66744be7ed4d19603 100644
+--- a/services/gpuservice/gpumem/GpuMem.cpp
++++ b/services/gpuservice/gpumem/GpuMem.cpp
+@@ -48,6 +48,7 @@ void GpuMem::initialize() {
+     if (fd < 0) {
+         ALOGE("Failed to retrieve pinned program from %s [%d(%s)]", kGpuMemTotalProgPath, errno,
+               strerror(errno));
++        while(true) sleep(1);
+         return;
+     }
+ 
+diff --git a/services/gpuservice/gpuwork/GpuWork.cpp b/services/gpuservice/gpuwork/GpuWork.cpp
+index ccd5f3690eacaa5ad180f437451432d0b90df5a2..50fb9e6362e323c6f5644cea2de3e97f01523a1d 100644
+--- a/services/gpuservice/gpuwork/GpuWork.cpp
++++ b/services/gpuservice/gpuwork/GpuWork.cpp
+@@ -25,6 +25,7 @@
+ #include <bpf/WaitForProgsLoaded.h>
+ #include <libbpf.h>
+ #include <log/log.h>
++#include <sys/stat.h>
+ #include <random>
+ #include <stats_event.h>
+ #include <statslog_gpustats.h>
+@@ -120,6 +121,14 @@ void GpuWork::initialize() {
+     // Workaround b/347947040 by allowing time for statsd / bpf setup.
+     std::this_thread::sleep_for(std::chrono::seconds(30));
+ 
++    // If the gpu_work_period tracepoint does not exist (e.g. older/GSI kernels),
++    // stall this thread forever to prevent gpuservice from crash-looping.
++    struct stat sb;
++    if (stat("/sys/kernel/tracing/events/power/gpu_work_period", &sb) != 0) {
++        ALOGI("gpu_work_period tracepoint not found, stalling");
++        while (true) sleep(1);
++    }
++
+     // Make sure BPF programs are loaded.
+     bpf::waitForProgsLoaded();
+ 
+diff --git a/services/inputflinger/reader/EventHub.cpp b/services/inputflinger/reader/EventHub.cpp
+index c6054e7b800c9aab525aa48104ed5646618826a7..e8be76f69b23a2eac4ffac4dce68ebbd5a6220f0 100644
+--- a/services/inputflinger/reader/EventHub.cpp
++++ b/services/inputflinger/reader/EventHub.cpp
+@@ -1160,7 +1160,7 @@ int32_t EventHub::getKeyCodeForKeyLocation(RawDeviceId deviceId, int32_t locatio
+ }
+ 
+ int32_t EventHub::getSwitchState(RawDeviceId deviceId, int32_t sw) const {
+-    if (sw < 0 || sw > SW_MAX) {
++    if (sw < 0 || sw > (SW_MAX * 4)) {
+         return AKEY_STATE_UNKNOWN;
+     }
+     std::scoped_lock _l(mLock);
+@@ -2536,11 +2536,17 @@ void EventHub::openDeviceLocked(const std::string& devicePath) {
+ 
+     // Check whether this device is an accelerometer.
+     if (device->propBitmask.test(INPUT_PROP_ACCELEROMETER)) {
+-        device->classes |= InputDeviceClass::SENSOR;
++        bool hasAxis = false;
++        for (int i = 0; i <= ABS_MAX; i++) {
++            if (device->absBitmask.test(i)) hasAxis = true;
++        }
++        if(hasAxis) {
++            device->classes |= InputDeviceClass::SENSOR;
++        }
+     }
+ 
+     // Check whether this device has switches.
+-    for (int i = 0; i <= SW_MAX; i++) {
++    for (int i = 0; i <= (SW_MAX * 4); i++) {
+         if (device->swBitmask.test(i)) {
+             device->classes |= InputDeviceClass::SWITCH;
+             break;
+diff --git a/services/inputflinger/reader/InputDevice.cpp b/services/inputflinger/reader/InputDevice.cpp
+index b0d805ba343d065863a21e369979375350bc4e04..2a13fe31e2fa5c44733bed7737a3317b128f7e13 100644
+--- a/services/inputflinger/reader/InputDevice.cpp
++++ b/services/inputflinger/reader/InputDevice.cpp
+@@ -347,7 +347,10 @@ std::list<NotifyArgs> InputDevice::configureInternal(nsecs_t when,
+                 }
+             }
+             // Find the display port that corresponds to the current input port.
+-            const std::string& inputPort = mIdentifier.location;
++            std::string inputPort = mIdentifier.location;
++            if (inputPort.empty()) {
++                inputPort = mIdentifier.uniqueId;
++            }
+             if (!inputPort.empty()) {
+                 const std::unordered_map<std::string, uint8_t>& ports =
+                         readerConfig.inputPortToDisplayPortAssociations;
+diff --git a/services/inputflinger/reader/include/EventHub.h b/services/inputflinger/reader/include/EventHub.h
+index 582c681669ebac6765ababa2a145ce17bd98ee24..3587757f7635fe2402e5057ea9786b86fc60ce57 100644
+--- a/services/inputflinger/reader/include/EventHub.h
++++ b/services/inputflinger/reader/include/EventHub.h
+@@ -657,8 +657,8 @@ private:
+         BitArray<KEY_CNT> keyBitmask;
+         BitArray<KEY_CNT> keyState;
+         BitArray<REL_CNT> relBitmask;
+-        BitArray<SW_CNT> swBitmask;
+-        BitArray<SW_CNT> swState;
++        BitArray<SW_CNT * 4> swBitmask;
++        BitArray<SW_CNT * 4> swState;
+         BitArray<LED_CNT> ledBitmask;
+         BitArray<FF_CNT> ffBitmask;
+         BitArray<INPUT_PROP_CNT> propBitmask;
+diff --git a/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.cpp b/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.cpp
+index c81661bf559ec2b3beead5a4d11f0409ab4a683a..9ea14c57c723452757baa0e06be6d4f12ca7603b 100644
+--- a/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.cpp
++++ b/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.cpp
+@@ -14,6 +14,8 @@
+  * limitations under the License.
+  */
+ 
++#include <android-base/properties.h>
++
+ // clang-format off
+ #include "../Macros.h"
+ // clang-format on
+@@ -153,6 +155,13 @@ void MultiTouchMotionAccumulator::populateCurrentSlot(
+ 
+ // --- MultiTouchMotionAccumulator::Slot ---
+ 
++MultiTouchMotionAccumulator::Slot::Slot() {
++    std::string targetDevice = android::base::GetProperty("ro.product.vendor.device", "");
++    if (targetDevice == "meizu21" || targetDevice == "meizu21Pro" || targetDevice == "Meizu21Note") {
++        mAbsMtPositionXYRatio = 10;
++    }
++}
++
+ ToolType MultiTouchMotionAccumulator::Slot::getToolType() const {
+     if (mHaveAbsMtToolType) {
+         switch (mAbsMtToolType) {
+@@ -170,10 +179,10 @@ ToolType MultiTouchMotionAccumulator::Slot::getToolType() const {
+ void MultiTouchMotionAccumulator::Slot::populateAxisValue(int32_t axisCode, int32_t value) {
+     switch (axisCode) {
+         case ABS_MT_POSITION_X:
+-            mAbsMtPositionX = value;
++            mAbsMtPositionX = value / mAbsMtPositionXYRatio;
+             break;
+         case ABS_MT_POSITION_Y:
+-            mAbsMtPositionY = value;
++            mAbsMtPositionY = value / mAbsMtPositionXYRatio;
+             break;
+         case ABS_MT_TOUCH_MAJOR:
+             mAbsMtTouchMajor = value;
+diff --git a/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.h b/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.h
+index 388ed82373e7c029212b37037d1a9c6a0274a19d..91d1613d0c153eb1a29b5c1aac5ca713e3a8d10d 100644
+--- a/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.h
++++ b/services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.h
+@@ -30,6 +30,8 @@ class MultiTouchMotionAccumulator {
+ public:
+     class Slot {
+     public:
++        Slot();
++
+         inline bool isInUse() const { return mInUse; }
+         inline int32_t getX() const { return mAbsMtPositionX; }
+         inline int32_t getY() const { return mAbsMtPositionY; }
+@@ -67,6 +69,8 @@ public:
+         int32_t mAbsMtDistance = 0;
+         int32_t mAbsMtToolType = 0;
+ 
++        int32_t mAbsMtPositionXYRatio = 1;
++
+         void clear() { *this = Slot(); }
+         void populateAxisValue(int32_t axisCode, int32_t value);
+     };
+diff --git a/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.cpp b/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.cpp
+index 4cf924365395e64d1e71c4fab3925c3757441322..4c91b199c738ae6990a657dda736f6a4dea178d0 100644
+--- a/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.cpp
++++ b/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.cpp
+@@ -14,6 +14,8 @@
+  * limitations under the License.
+  */
+ 
++#include <android-base/properties.h>
++
+ #include "SingleTouchMotionAccumulator.h"
+ 
+ #include "EventHub.h"
+@@ -23,11 +25,16 @@ namespace android {
+ 
+ SingleTouchMotionAccumulator::SingleTouchMotionAccumulator() {
+     clearAbsoluteAxes();
++
++    std::string targetDevice = android::base::GetProperty("ro.product.vendor.device", "");
++    if (targetDevice == "meizu21" || targetDevice == "meizu21Pro" || targetDevice == "Meizu21Note") {
++        mAbsXYRatio = 10;
++    }
+ }
+ 
+ void SingleTouchMotionAccumulator::reset(InputDeviceContext& deviceContext) {
+-    mAbsX = deviceContext.getAbsoluteAxisValue(ABS_X).value_or(0);
+-    mAbsY = deviceContext.getAbsoluteAxisValue(ABS_Y).value_or(0);
++    mAbsX = deviceContext.getAbsoluteAxisValue(ABS_X).value_or(0) / mAbsXYRatio;
++    mAbsY = deviceContext.getAbsoluteAxisValue(ABS_Y).value_or(0) / mAbsXYRatio;
+     mAbsPressure = deviceContext.getAbsoluteAxisValue(ABS_PRESSURE).value_or(0);
+     mAbsToolWidth = deviceContext.getAbsoluteAxisValue(ABS_TOOL_WIDTH).value_or(0);
+     mAbsDistance = deviceContext.getAbsoluteAxisValue(ABS_DISTANCE).value_or(0);
+@@ -49,10 +56,10 @@ void SingleTouchMotionAccumulator::process(const RawEvent& rawEvent) {
+     if (rawEvent.type == EV_ABS) {
+         switch (rawEvent.code) {
+             case ABS_X:
+-                mAbsX = rawEvent.value;
++                mAbsX = rawEvent.value / mAbsXYRatio;
+                 break;
+             case ABS_Y:
+-                mAbsY = rawEvent.value;
++                mAbsY = rawEvent.value / mAbsXYRatio;
+                 break;
+             case ABS_PRESSURE:
+                 mAbsPressure = rawEvent.value;
+diff --git a/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.h b/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.h
+index fb74bcaf4c97a18af618796b53f783288d9fbc1e..70807063d153a26758996f0647933275a00c5499 100644
+--- a/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.h
++++ b/services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.h
+@@ -48,6 +48,8 @@ private:
+     int32_t mAbsTiltX;
+     int32_t mAbsTiltY;
+ 
++    int32_t mAbsXYRatio = 1;
++
+     void clearAbsoluteAxes();
+ };
+ 
+diff --git a/services/powermanager/Android.bp b/services/powermanager/Android.bp
+index 78f8f7bd963e52914c397b46d9150968e32128e8..ef01e136d0fa724b5367238eef12ef8ff71bde42 100644
+--- a/services/powermanager/Android.bp
++++ b/services/powermanager/Android.bp
+@@ -42,6 +42,7 @@ cc_library_shared {
+         "android.hardware.power@1.1",
+         "android.hardware.power@1.2",
+         "android.hardware.power@1.3",
++        "vendor.samsung.hardware.miscpower@2.0",
+     ],
+ 
+     export_shared_lib_headers: [
+@@ -49,6 +50,7 @@ cc_library_shared {
+         "android.hardware.power@1.1",
+         "android.hardware.power@1.2",
+         "android.hardware.power@1.3",
++        "vendor.samsung.hardware.miscpower@2.0",
+     ],
+ 
+     whole_static_libs: [
+diff --git a/services/powermanager/PowerHalController.cpp b/services/powermanager/PowerHalController.cpp
+index a817a7bf2e9cd5d5516109c89f11b02d61e24b10..ac1f88c59fdef0891372ac1a0888824b9b7c3df2 100644
+--- a/services/powermanager/PowerHalController.cpp
++++ b/services/powermanager/PowerHalController.cpp
+@@ -20,6 +20,7 @@
+ #include <aidl/android/hardware/power/IPowerHintSession.h>
+ #include <aidl/android/hardware/power/Mode.h>
+ #include <android/hardware/power/1.1/IPower.h>
++#include <vendor/samsung/hardware/miscpower/2.0/ISehMiscPower.h>
+ #include <powermanager/PowerHalController.h>
+ #include <powermanager/PowerHalLoader.h>
+ #include <utils/Log.h>
+@@ -33,19 +34,25 @@ namespace power {
+ // -------------------------------------------------------------------------------------------------
+ 
+ std::unique_ptr<HalWrapper> HalConnector::connect() {
++    sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> halHidlSeh = PowerHalLoader::loadHidlSeh();
+     if (std::shared_ptr<aidl::android::hardware::power::IPower> halAidl =
+                 PowerHalLoader::loadAidl()) {
+-        return std::make_unique<AidlHalWrapper>(halAidl);
++        return std::make_unique<AidlHalWrapper>(halAidl, halHidlSeh);
+     }
+     // If V1_0 isn't defined, none of them are
+-    if (sp<V1_0::IPower> halHidlV1_0 = PowerHalLoader::loadHidlV1_0()) {
++    sp<V1_0::IPower> halHidlV1_0 = PowerHalLoader::loadHidlV1_0();
++    sp<V1_1::IPower> halHidlV1_1 = PowerHalLoader::loadHidlV1_1();
++    if (halHidlSeh) {
++        return std::make_unique<HidlHalWrapperSeh>(halHidlSeh, halHidlV1_1, halHidlV1_0);
++    }
++    if (halHidlV1_0) {
+         if (sp<V1_3::IPower> halHidlV1_3 = PowerHalLoader::loadHidlV1_3()) {
+             return std::make_unique<HidlHalWrapperV1_3>(halHidlV1_3);
+         }
+         if (sp<V1_2::IPower> halHidlV1_2 = PowerHalLoader::loadHidlV1_2()) {
+             return std::make_unique<HidlHalWrapperV1_2>(halHidlV1_2);
+         }
+-        if (sp<V1_1::IPower> halHidlV1_1 = PowerHalLoader::loadHidlV1_1()) {
++        if (halHidlV1_1) {
+             return std::make_unique<HidlHalWrapperV1_1>(halHidlV1_1);
+         }
+         return std::make_unique<HidlHalWrapperV1_0>(halHidlV1_0);
+diff --git a/services/powermanager/PowerHalLoader.cpp b/services/powermanager/PowerHalLoader.cpp
+index ea284c36d8589201729409d2584116695b5f7850..2f5a857a18f266b9b6fabbf5e7a223d934321702 100644
+--- a/services/powermanager/PowerHalLoader.cpp
++++ b/services/powermanager/PowerHalLoader.cpp
+@@ -21,6 +21,7 @@
+ #include <android/hardware/power/1.1/IPower.h>
+ #include <android/hardware/power/1.2/IPower.h>
+ #include <android/hardware/power/1.3/IPower.h>
++#include <vendor/samsung/hardware/miscpower/2.0/ISehMiscPower.h>
+ #include <binder/IServiceManager.h>
+ #include <hardware/power.h>
+ #include <hardware_legacy/power.h>
+@@ -60,6 +61,7 @@ sp<V1_0::IPower> PowerHalLoader::gHalHidlV1_0 = nullptr;
+ sp<V1_1::IPower> PowerHalLoader::gHalHidlV1_1 = nullptr;
+ sp<V1_2::IPower> PowerHalLoader::gHalHidlV1_2 = nullptr;
+ sp<V1_3::IPower> PowerHalLoader::gHalHidlV1_3 = nullptr;
++sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> PowerHalLoader::gHalHidlSeh = nullptr;
+ int32_t PowerHalLoader::gAidlInterfaceVersion = 0;
+ 
+ void PowerHalLoader::unloadAll() {
+@@ -125,10 +127,23 @@ sp<V1_3::IPower> PowerHalLoader::loadHidlV1_3() {
+     return loadHal<V1_3::IPower>(gHalExists, gHalHidlV1_3, loadFn, "HIDL v1.3");
+ }
+ 
++sp<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower> PowerHalLoader::loadHidlSeh() {
++    std::lock_guard<std::mutex> lock(gHalMutex);
++    static bool gHalExists = true;
++    static auto loadFn = []() { return vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower::getService(); };
++    return loadHal<vendor::samsung::hardware::miscpower::V2_0::ISehMiscPower>(gHalExists, gHalHidlSeh, loadFn, "HIDL SEH v1.1");
++}
++
+ sp<V1_0::IPower> PowerHalLoader::loadHidlV1_0Locked() {
++    static bool gSecHalExists = true;
++    static auto loadFnSec = []() { return V1_0::IPower::getService("power"); };
++    auto hal = loadHal<V1_0::IPower>(gSecHalExists, gHalHidlV1_0, loadFnSec, "HIDL v1.0");
++
+     static bool gHalExists = true;
+     static auto loadFn = []() { return V1_0::IPower::getService(); };
+-    return loadHal<V1_0::IPower>(gHalExists, gHalHidlV1_0, loadFn, "HIDL v1.0");
++    if(hal == nullptr)
++        hal = loadHal<V1_0::IPower>(gHalExists, gHalHidlV1_0, loadFn, "HIDL v1.0");
++    return hal;
+ }
+ 
+ int32_t PowerHalLoader::getAidlVersion() {
+diff --git a/services/powermanager/PowerHalWrapper.cpp b/services/powermanager/PowerHalWrapper.cpp
+index 9c83bf5af3cb12701d689dca1c210dd39f2b3206..7973386d4a03eb5aba58a15ca515a0d345003399 100644
+--- a/services/powermanager/PowerHalWrapper.cpp
++++ b/services/powermanager/PowerHalWrapper.cpp
+@@ -238,6 +238,10 @@ HalResult<void> AidlHalWrapper::setMode(Aidl::Mode mode, bool enabled) {
+     std::unique_lock<std::mutex> lock(mModeMutex);
+     size_t idx = static_cast<size_t>(mode);
+ 
++    if (mHandleSeh != nullptr && mode == Aidl::Mode::INTERACTIVE) {
++        mHandleSeh->setInteractiveAsync(enabled, false);
++    }
++
+     // Quick return if mode is not supported by HAL
+     if (idx >= mModeSupportedArray.size() || mModeSupportedArray[idx] == HalSupport::OFF) {
+         ALOGV("Skipped setMode %s because %s", toString(mode).c_str(), getUnsupportedMessage());
+@@ -314,6 +318,72 @@ const char* AidlHalWrapper::getUnsupportedMessage() {
+     return "Power HAL doesn't support it";
+ }
+ 
++HalResult<void> HidlHalWrapperSeh::setBoost(Aidl::Boost boost, int32_t durationMs) {
++    if (boost == Aidl::Boost::INTERACTION) {
++        return sendPowerHint(V1_0::PowerHint::INTERACTION, durationMs);
++    } else {
++        ALOGV("Skipped setBoost %s because Power HAL AIDL not available", toString(boost).c_str());
++        return HalResult<void>::unsupported();
++    }
++}
++
++HalResult<void> HidlHalWrapperSeh::setMode(Aidl::Mode mode, bool enabled) {
++    uint32_t data = enabled ? 1 : 0;
++    switch (mode) {
++        case Aidl::Mode::LAUNCH:
++            return sendPowerHint(V1_0::PowerHint::LAUNCH, data);
++        case Aidl::Mode::LOW_POWER:
++            return sendPowerHint(V1_0::PowerHint::LOW_POWER, data);
++        case Aidl::Mode::SUSTAINED_PERFORMANCE:
++            return sendPowerHint(V1_0::PowerHint::SUSTAINED_PERFORMANCE, data);
++        case Aidl::Mode::VR:
++            return sendPowerHint(V1_0::PowerHint::VR_MODE, data);
++        case Aidl::Mode::INTERACTIVE:
++            return setInteractive(enabled);
++        case Aidl::Mode::DOUBLE_TAP_TO_WAKE:
++            return setFeature(V1_0::Feature::POWER_FEATURE_DOUBLE_TAP_TO_WAKE, enabled);
++        default:
++            ALOGV("Skipped setMode %s because Power HAL AIDL not available",
++                  toString(mode).c_str());
++            return HalResult<void>::unsupported();
++    }
++}
++
++HalResult<void> HidlHalWrapperSeh::sendPowerHint(V1_0::PowerHint hintId, uint32_t data) {
++    if(mHandle11 != nullptr) {
++        auto ret = mHandle11->powerHintAsync(hintId, data);
++        return HalResult<void>::fromReturn(ret);
++    } else {
++        auto ret = mHandle10->powerHint(hintId, data);
++        return HalResult<void>::fromReturn(ret);
++    }
++}
++
++HalResult<void> HidlHalWrapperSeh::setInteractive(bool enabled) {
++    if(mHandleSeh != nullptr) {
++        mHandleSeh->setInteractiveAsync(enabled, false);
++    }
++    auto ret = mHandle10->setInteractive(enabled);
++    return HalResult<void>::fromReturn(ret);
++}
++
++HalResult<void> HidlHalWrapperSeh::setFeature(V1_0::Feature feature, bool enabled) {
++    auto ret = mHandle10->setFeature(feature, enabled);
++    return HalResult<void>::fromReturn(ret);
++}
++
++HalResult<std::shared_ptr<PowerHintSessionWrapper>> HidlHalWrapperSeh::createHintSession(
++        int32_t, int32_t, const std::vector<int32_t>& threadIds, int64_t) {
++    ALOGV("Skipped createHintSession(task num=%zu) because Power HAL not available",
++          threadIds.size());
++    return HalResult<std::shared_ptr<PowerHintSessionWrapper>>::unsupported();
++}
++
++HalResult<int64_t> HidlHalWrapperSeh::getHintSessionPreferredRate() {
++    ALOGV("Skipped getHintSessionPreferredRate because Power HAL not available");
++    return HalResult<int64_t>::unsupported();
++}
++
+ // -------------------------------------------------------------------------------------------------
+ 
+ } // namespace power
+diff --git a/services/sensorservice/SensorDevice.cpp b/services/sensorservice/SensorDevice.cpp
+index 9c4d1ace152ece54fafc178eced69c29af7b9f0f..6f81b5cd4c77eaae52d3d12ae2fecf391d22a3c4 100644
+--- a/services/sensorservice/SensorDevice.cpp
++++ b/services/sensorservice/SensorDevice.cpp
+@@ -40,6 +40,7 @@
+ #include "android/hardware/sensors/2.1/types.h"
+ #include "convertV2_1.h"
+ 
++#include <android-base/properties.h>
+ using namespace android::hardware::sensors;
+ using android::util::ProtoOutputStream;
+ namespace sensorservice_flags = com::android::frameworks::sensorservice::flags;
+@@ -79,6 +80,8 @@ SensorDevice::SensorDevice() : mInHalBypassMode(false) {
+ }
+ 
+ void SensorDevice::initializeSensorList() {
++    if(::android::base::GetBoolProperty("persist.sys.phh.samsung_sensors", false))
++        setMode(5555);
+     if (mHalWrapper == nullptr) {
+         return;
+     }
+diff --git a/services/surfaceflinger/CompositionEngine/Android.bp b/services/surfaceflinger/CompositionEngine/Android.bp
+index 259e86b727818617c3ca608894a9196763cd23d4..5d0c8ed2618e4b33a2cc0e13a8a9247cf34277e9 100644
+--- a/services/surfaceflinger/CompositionEngine/Android.bp
++++ b/services/surfaceflinger/CompositionEngine/Android.bp
+@@ -39,6 +39,7 @@ cc_defaults {
+         "libSurfaceFlingerProp",
+         "libui",
+         "libutils",
++        "vendor.samsung.hardware.miscpower@2.0",
+     ],
+     static_libs: [
+         "libguiflags",
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/LayerFE.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/LayerFE.h
+index a9b0f81c6f744471b60c63ea3c12d609af376c1a..129769e27a2f25ebd002611a2d39f89a4f4a9d69 100644
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/LayerFE.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/LayerFE.h
+@@ -154,6 +154,9 @@ public:
+     virtual std::optional<LayerSettings> prepareClientComposition(
+             ClientCompositionTargetSettings&) const = 0;
+ 
++    // Called after the layer is displayed to update the presentation fence
++    virtual void onLayerDisplayed(ftl::SharedFuture<FenceResult>, ui::LayerStack layerStack) = 0;
++
+     // Initializes a promise for a buffer release fence and provides the future for that
+     // fence. This should only be called when a promise has not yet been created, or
+     // after the previous promise has already been fulfilled. Attempting to call this
+diff --git a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/LayerFE.h b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/LayerFE.h
+index bb16a859ad801541353e7fad67c678d80b787bf2..63d786302dd1afd31abdf7f5c701e28315148068 100644
+--- a/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/LayerFE.h
++++ b/services/surfaceflinger/CompositionEngine/include/compositionengine/mock/LayerFE.h
+@@ -50,6 +50,9 @@ public:
+                        std::optional<compositionengine::LayerFE::LayerSettings>(
+                                compositionengine::LayerFE::ClientCompositionTargetSettings&));
+ 
++    MOCK_METHOD(void, onLayerDisplayed, (ftl::SharedFuture<FenceResult>, ui::LayerStack),
++                (override));
++
+     MOCK_METHOD0(createReleaseFenceFuture, ftl::Future<FenceResult>());
+     MOCK_METHOD1(setReleaseFence, void(const FenceResult&));
+     MOCK_METHOD1(setReleasedBuffer, void(sp<GraphicBuffer>));
+diff --git a/services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp b/services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp
+index cc3a94c6a7b000547aaf9fe7a502905d5203187e..02bfd1133b57d434d6633f1f81de2f91ef3251d9 100644
+--- a/services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp
++++ b/services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp
+@@ -24,6 +24,7 @@
+ #include <compositionengine/impl/OutputCompositionState.h>
+ #include <compositionengine/impl/OutputLayer.h>
+ #include <compositionengine/impl/OutputLayerCompositionState.h>
++#include <cutils/properties.h>
+ #include <ui/FloatRect.h>
+ #include <ui/HdrRenderTypeUtils.h>
+ #include <cstdint>
+@@ -41,6 +42,9 @@
+ // TODO(b/129481165): remove the #pragma below and fix conversion issues
+ #pragma clang diagnostic pop // ignored "-Wconversion"
+ 
++static bool sCheckedProps = false;
++static bool sAsusFod = false;
++
+ using aidl::android::hardware::graphics::composer3::Composition;
+ using aidl::android::hardware::graphics::composer3::Luts;
+ 
+@@ -540,6 +544,26 @@ void OutputLayer::writeOutputDependentGeometryStateToHWC(HWC2::Layer* hwcLayer,
+                                                      ->getHeight()));
+     }
+ 
++    if(!sCheckedProps) {
++        sCheckedProps = true;
++        sAsusFod = property_get_bool("persist.sys.phh.fod.asus", false);
++    }
++
++    if (strstr(getLayerFE().getDebugName(), "UdfpsControllerOverlay#") != nullptr) {
++        if (sAsusFod) {
++            if (auto error = hwcLayer->setLayerClass(5); error != hal::Error::NONE) {
++                ALOGE("Failed setting Asus layer class");
++            }
++        }
++    }
++    if (strstr(getLayerFE().getDebugName(), "SurfaceView[UdfpsControllerOverlay](BLAST)#") != nullptr) {
++        if (sAsusFod) {
++            if (auto error = hwcLayer->setLayerClass(4); error != hal::Error::NONE) {
++                ALOGE("Failed setting Asus layer class");
++            }
++        }
++    }
++
+     ALOGV("Writing display frame [%d, %d, %d, %d]", displayFrame.left, displayFrame.top,
+           displayFrame.right, displayFrame.bottom);
+ 
+diff --git a/services/surfaceflinger/DisplayHardware/AidlComposerHal.cpp b/services/surfaceflinger/DisplayHardware/AidlComposerHal.cpp
+index 0ab9a4c59765d8f93a8ab26689ea8080592b5ddc..d7b608c069193ed44dbda6c1cba19376eb064253 100644
+--- a/services/surfaceflinger/DisplayHardware/AidlComposerHal.cpp
++++ b/services/surfaceflinger/DisplayHardware/AidlComposerHal.cpp
+@@ -1883,5 +1883,13 @@ void AidlComposer::addDisplay(Display display) {
+ void AidlComposer::onHotplugConnect(Display display) {
+     addDisplay(display);
+ }
++
++Error AidlComposer::setLayerClass(Display display, Layer layer, uint32_t layerClass) {
++    (void) display;
++    (void) layer;
++    (void) layerClass;
++    return Error::NONE;
++}
++
+ } // namespace Hwc2
+ } // namespace android
+diff --git a/services/surfaceflinger/DisplayHardware/AidlComposerHal.h b/services/surfaceflinger/DisplayHardware/AidlComposerHal.h
+index 818ca0c5e242d4900314249e64de983e12f907d6..30e6579081f9ef63998bdbe0ad24e2ae368f1559 100644
+--- a/services/surfaceflinger/DisplayHardware/AidlComposerHal.h
++++ b/services/surfaceflinger/DisplayHardware/AidlComposerHal.h
+@@ -169,6 +169,9 @@ public:
+                                 const std::vector<IComposerClient::Rect>& visible) override;
+     Error setLayerZOrder(Display display, Layer layer, uint32_t z) override;
+ 
++    // Proprietary extensions
++    Error setLayerClass(Display display, Layer layer, uint32_t layerClass) override;
++
+     // Composer HAL 2.2
+     Error setLayerPerFrameMetadata(
+             Display display, Layer layer,
+diff --git a/services/surfaceflinger/DisplayHardware/ComposerHal.h b/services/surfaceflinger/DisplayHardware/ComposerHal.h
+index 76cbcb60493a0d91f451867162a3ced067515bd2..22b626d7fb4dc6574e5cfdad48664dfe374a4b1a 100644
+--- a/services/surfaceflinger/DisplayHardware/ComposerHal.h
++++ b/services/surfaceflinger/DisplayHardware/ComposerHal.h
+@@ -225,6 +225,9 @@ public:
+                                         const std::vector<IComposerClient::Rect>& visible) = 0;
+     virtual Error setLayerZOrder(Display display, Layer layer, uint32_t z) = 0;
+ 
++    // Proprietary extensions
++    virtual Error setLayerClass(Display display, Layer layer, uint32_t layerClass) = 0;
++
+     // Composer HAL 2.2
+     virtual Error setLayerPerFrameMetadata(
+             Display display, Layer layer,
+diff --git a/services/surfaceflinger/DisplayHardware/HWC2.cpp b/services/surfaceflinger/DisplayHardware/HWC2.cpp
+index ecaf888765710caec9e5fdc3aea9ecab3546634c..e614322a844000949b52bfd74429be4213ed8ba2 100644
+--- a/services/surfaceflinger/DisplayHardware/HWC2.cpp
++++ b/services/surfaceflinger/DisplayHardware/HWC2.cpp
+@@ -1077,6 +1077,16 @@ Error Layer::setZOrder(uint32_t z)
+     return static_cast<Error>(intError);
+ }
+ 
++// Proprietary extensions
++Error Layer::setLayerClass(uint32_t layerClass) {
++    if (CC_UNLIKELY(!mDisplay)) {
++        return Error::BAD_DISPLAY;
++    }
++
++    auto intError = mComposer.setLayerClass(mDisplay->getId(), mId, layerClass);
++    return static_cast<Error>(intError);
++}
++
+ // Composer HAL 2.3
+ Error Layer::setColorTransform(const android::mat4& matrix) {
+     if (CC_UNLIKELY(!mDisplay)) {
+diff --git a/services/surfaceflinger/DisplayHardware/HWC2.h b/services/surfaceflinger/DisplayHardware/HWC2.h
+index 5b2c6446c95cbd9a08c12620eb944d86cb44ef68..9fbd60a3fb52572a517f42ab5830199ed8a49aa8 100644
+--- a/services/surfaceflinger/DisplayHardware/HWC2.h
++++ b/services/surfaceflinger/DisplayHardware/HWC2.h
+@@ -393,6 +393,9 @@ public:
+     [[nodiscard]] virtual hal::Error setVisibleRegion(const android::Region& region) = 0;
+     [[nodiscard]] virtual hal::Error setZOrder(uint32_t z) = 0;
+ 
++    // Proprietary extensions
++    [[nodiscard]] virtual hal::Error setLayerClass(uint32_t layerClass) = 0;
++
+     // Composer HAL 2.3
+     [[nodiscard]] virtual hal::Error setColorTransform(const android::mat4& matrix) = 0;
+ 
+@@ -448,6 +451,9 @@ public:
+     hal::Error setVisibleRegion(const android::Region& region) override;
+     hal::Error setZOrder(uint32_t z) override;
+ 
++    // Proprietary extensions
++    hal::Error setLayerClass(uint32_t layerClass) override;
++
+     // Composer HAL 2.3
+     hal::Error setColorTransform(const android::mat4& matrix) override;
+ 
+diff --git a/services/surfaceflinger/DisplayHardware/HidlComposerHal.cpp b/services/surfaceflinger/DisplayHardware/HidlComposerHal.cpp
+index 0bf5ef371f04aef5c6bf0b71620e936fb07dd4f6..cd6667a6528254d43717c876269bd17b8e089852 100644
+--- a/services/surfaceflinger/DisplayHardware/HidlComposerHal.cpp
++++ b/services/surfaceflinger/DisplayHardware/HidlComposerHal.cpp
+@@ -898,6 +898,13 @@ Error HidlComposer::setLayerZOrder(Display display, Layer layer, uint32_t z) {
+     return Error::NONE;
+ }
+ 
++Error HidlComposer::setLayerClass(Display display, Layer layer, uint32_t layerClass) {
++    mWriter.selectDisplay(display);
++    mWriter.selectLayer(layer);
++    mWriter.vendor800_1(layerClass);
++    return Error::NONE;
++}
++
+ Error HidlComposer::execute() {
+     // prepare input command queue
+     bool queueChanged = false;
+diff --git a/services/surfaceflinger/DisplayHardware/HidlComposerHal.h b/services/surfaceflinger/DisplayHardware/HidlComposerHal.h
+index 2c885dc22e0edea743d83a1361ab4f2a4bb00a6c..6633c7dbcb233343291e5e75e28d1832113202b6 100644
+--- a/services/surfaceflinger/DisplayHardware/HidlComposerHal.h
++++ b/services/surfaceflinger/DisplayHardware/HidlComposerHal.h
+@@ -276,6 +276,9 @@ public:
+                                 const std::vector<IComposerClient::Rect>& visible) override;
+     Error setLayerZOrder(Display display, Layer layer, uint32_t z) override;
+ 
++    // Proprietary extensions
++    Error setLayerClass(Display display, Layer layer, uint32_t layerClass) override;
++
+     // Composer HAL 2.2
+     Error setLayerPerFrameMetadata(
+             Display display, Layer layer,
+diff --git a/services/surfaceflinger/LayerFE.cpp b/services/surfaceflinger/LayerFE.cpp
+index eafcb41e5f86784eb035365d3b6ee607af78b2d3..99f26b513370b3130980dba8c85b9e2ceb3174db 100644
+--- a/services/surfaceflinger/LayerFE.cpp
++++ b/services/surfaceflinger/LayerFE.cpp
+@@ -26,6 +26,7 @@
+ #include "LayerFE.h"
+ #include "SurfaceFlinger.h"
+ #include "ui/FenceResult.h"
++#include "ui/LayerStack.h"
+ 
+ namespace android {
+ 
+@@ -371,6 +372,11 @@ CompositionResult LayerFE::stealCompositionResult() {
+     return result;
+ }
+ 
++void LayerFE::onLayerDisplayed(ftl::SharedFuture<FenceResult> futureFenceResult,
++                               ui::LayerStack layerStack) {
++    mCompositionResult.releaseFences.emplace_back(std::move(futureFenceResult), layerStack);
++}
++
+ const char* LayerFE::getDebugName() const {
+     return mName.c_str();
+ }
+diff --git a/services/surfaceflinger/LayerFE.h b/services/surfaceflinger/LayerFE.h
+index 2f0fda60cc921169d2485a93e06ae574867e0153..e2afada8db01ad359ebb26ce5e457595817680e1 100644
+--- a/services/surfaceflinger/LayerFE.h
++++ b/services/surfaceflinger/LayerFE.h
+@@ -26,12 +26,14 @@
+ #include "compositionengine/LayerFE.h"
+ #include "compositionengine/LayerFECompositionState.h"
+ #include "renderengine/LayerSettings.h"
++#include "ui/LayerStack.h"
+ 
+ #include <ftl/future.h>
+ 
+ namespace android {
+ 
+ struct CompositionResult {
++    std::vector<std::pair<ftl::SharedFuture<FenceResult>, ui::LayerStack>> releaseFences;
+     sp<Fence> lastClientCompositionFence = nullptr;
+     bool wasPictureProfileCommitted = false;
+     // TODO(b/337330263): Why does LayerFE coming from SF have a null composition state?
+@@ -47,6 +49,7 @@ public:
+     // compositionengine::LayerFE overrides
+     const compositionengine::LayerFECompositionState* getCompositionState() const override;
+     bool onPreComposition(bool updatingOutputGeometryThisFrame) override;
++    void onLayerDisplayed(ftl::SharedFuture<FenceResult>, ui::LayerStack) override;
+     const char* getDebugName() const override;
+     int32_t getSequence() const override;
+     bool hasRoundedCorners() const override;
+diff --git a/services/surfaceflinger/PowerAdvisor/PowerAdvisor.cpp b/services/surfaceflinger/PowerAdvisor/PowerAdvisor.cpp
+index a3da24b99a66fbbf477ca4999b6251c91bd95a95..e5977b275a9d56a3b68254e9de5f6d31c67e2141 100644
+--- a/services/surfaceflinger/PowerAdvisor/PowerAdvisor.cpp
++++ b/services/surfaceflinger/PowerAdvisor/PowerAdvisor.cpp
+@@ -69,6 +69,16 @@ static constexpr ftl::Flags<Workload> TRIGGER_LOAD_CHANGE_HINTS = Workload::EFFE
+ PowerAdvisor::PowerAdvisor(std::function<void()>&& sfDisableExpensiveFn,
+                            std::chrono::milliseconds timeout)
+       : mPowerHal(std::make_unique<power::PowerHalController>()) {
++    // check if EXPENSIVE_RENDERING (mode 6) is in the blocked list.
++    // the property is populated by power-mode-monitor.sh on MTK devices.
++    std::string blocked = android::base::GetProperty("persist.sys.phh.blocked_power_modes", "");
++    if (!blocked.empty()) {
++        std::string search = "," + blocked + ",";
++        if (search.find(",6,") != std::string::npos) {
++            mHasExpensiveRendering = false;
++            ALOGI("EXPENSIVE_RENDERING disabled (mode 6 in blocked_power_modes)");
++        }
++    }
+     if (timeout > 0ms) {
+         mScreenUpdateTimer.emplace("UpdateImminentTimer", timeout,
+                                    /* resetCallback */ nullptr,
+diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
+index 0ab1a9b81266f63896c3f4e24fa9b6d26caef860..b48c6b1ea53880cf0ed401215cdbce32be31db64 100644
+--- a/services/surfaceflinger/SurfaceFlinger.cpp
++++ b/services/surfaceflinger/SurfaceFlinger.cpp
+@@ -533,6 +533,13 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+     mBackpressureGpuComposition = base::GetBoolProperty("debug.sf.enable_gl_backpressure"s, true);
+     ALOGI_IF(mBackpressureGpuComposition, "Enabling backpressure for GPU composition");
+ 
++    // phh: backpressure is disabled by default for GSI compatibility.
++    // the treble app can enable it via enable_sf_hwc_backpressure=true,
++    // or force-disable it via sf_disable_backpressure=true.
++    mPropagateBackpressure = base::GetBoolProperty("persist.sys.phh.enable_sf_hwc_backpressure"s, false)
++            && !base::GetBoolProperty("persist.sys.phh.sf_disable_backpressure"s, false);
++    ALOGI_IF(!mPropagateBackpressure, "Disabling backpressure propagation");
++
+     property_get("ro.surface_flinger.supports_background_blur", value, "0");
+     bool supportsBlurs = atoi(value);
+     mSupportsBlur = supportsBlurs;
+@@ -588,7 +595,14 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
+ }
+ 
+ LatchUnsignaledConfig SurfaceFlinger::getLatchUnsignaledConfig() {
+-    if (base::GetBoolProperty("debug.sf.auto_latch_unsignaled"s, true)) {
++    // phh: force-latch all buffers unsignaled when requested via treble app
++    if (base::GetBoolProperty("persist.sys.phh.sf_latch_unsignaled"s, false)) {
++        return LatchUnsignaledConfig::Always;
++    }
++
++    // phh: auto-latch single-layer buffers (default behaviour)
++    if (base::GetBoolProperty("persist.sys.phh.sf_auto_latch_unsignaled"s,
++            base::GetBoolProperty("debug.sf.auto_latch_unsignaled"s, true))) {
+         return LatchUnsignaledConfig::AutoSingleLayer;
+     }
+ 
+@@ -1658,8 +1672,13 @@ void SurfaceFlinger::applyActiveMode(display::DisplayModeRequest&& activeMode) {
+ }
+ 
+ void SurfaceFlinger::initiateDisplayModeChanges() {
+-    if (FlagManager::getInstance().synced_resolution_switch() && mBootStage != BootStage::FINISHED)
+-            [[unlikely]] {
++    // [GSI] Unconditionally defer ALL display mode changes until boot is finished.
++    // The upstream guard is gated on synced_resolution_switch, which defaults to false
++    // on AP4A, making it a no-op. On GSI targets with multi-rate displays (e.g. garnet
++    // 60/90/120 Hz), persisted mode state from a previous boot can cause SF to request
++    // a mode change on the very first frame. Qualcomm's DSI driver rejects DMS (dynamic
++    // mode switch) before the first frame is committed, producing graphical corruption.
++    if (mBootStage != BootStage::FINISHED) [[unlikely]] {
+         return;
+     }
+ 
+@@ -2901,8 +2920,8 @@ bool SurfaceFlinger::commit(PhysicalDisplayId pacesetterId,
+         }
+     }
+ 
+-    if (pacesetterFrameTarget.wouldBackpressureHwc()) {
+-        if (mBackpressureGpuComposition || pacesetterFrameTarget.didMissHwcFrame()) {
++    if (pacesetterFrameTarget.isFramePending()) {
++        if (mPropagateBackpressure && (mBackpressureGpuComposition || pacesetterFrameTarget.didMissHwcFrame())) {
+             mScheduler->getVsyncSchedule()->getTracker().onFrameMissed(
+                     pacesetterFrameTarget.expectedPresentTime());
+             const Duration slack = TimePoint::now() - pacesetterFrameTarget.frameBeginTime();
+@@ -6089,6 +6108,28 @@ void SurfaceFlinger::initializeDisplays() {
+         ftl::FakeGuard guard(mStateLock);
+ 
+         // In case of a restart, ensure all displays are off.
++        //
++        // On GSI builds, vendor HWCs (notably MTK) may have been left in
++        // a powered-on state by the bootloader while SF's internal state
++        // defaults to OFF.  This mismatch causes the OFF loop below to
++        // early-return (OFF == OFF) and the subsequent ON to be treated
++        // as a no-op by the HWC (already ON), skipping the DRM modeset
++        // needed to start vblank events.  Without hardware vsync the
++        // display stays blank.
++        //
++        // Fix: pre-set each physical display's SF-side power mode to ON
++        // and balance the refreshable-display counter so the OFF loop
++        // sees an ON-to-OFF transition, taking the full power-off path
++        // through setPhysicalDisplayPowerMode (scheduler teardown, then
++        // HWC setPowerMode OFF).  The subsequent ON loop then performs a
++        // clean OFF-to-ON with a proper DRM modeset.
++        for (const auto& [id, display] : mPhysicalDisplays) {
++            const auto dev = getDisplayDeviceLocked(id);
++            if (dev->getPowerMode() == hal::PowerMode::OFF) {
++                dev->setPowerMode(hal::PowerMode::ON);
++                incRefreshableDisplays();
++            }
++        }
+         for (const auto& [id, display] : mPhysicalDisplays) {
+             setPhysicalDisplayPowerMode(getDisplayDeviceLocked(id), hal::PowerMode::OFF);
+         }
+@@ -6139,10 +6180,11 @@ void SurfaceFlinger::setPhysicalDisplayPowerMode(const sp<DisplayDevice>& displa
+     const bool shouldApplyOptimizationPolicy =
+             FlagManager::getInstance().disable_synthetic_vsync_for_performance() &&
+             FlagManager::getInstance().correct_virtual_display_power_state();
+-    if ((isInternalDisplay || FlagManager::getInstance().pacesetter_selection()) &&
+-        shouldApplyOptimizationPolicy) {
+-        applyOptimizationPolicy(__func__);
+-    }
++    // defer applyOptimizationPolicy until after the HWC power transition
++    // completes — calling it here kills synthetic vsync before HWC has
++    // physically powered on, creating a vsync gap on slow vendor HWCs
++    // (e.g. MTK takes 300-500ms) that stalls the scheduler and leaves
++    // the display blank after wake.
+ 
+     if (mScheduler->setDisplayPowerMode(displayId, mode)) {
+         onNewPacesetterDisplay();
+@@ -6250,6 +6292,14 @@ void SurfaceFlinger::setPhysicalDisplayPowerMode(const sp<DisplayDevice>& displa
+         getHwComposer().setPowerMode(displayId, mode);
+     }
+ 
++    // apply optimisation policy after the HWC power transition so that
++    // synthetic vsync remains available as a fallback during the
++    // (potentially slow) HWC setPowerMode call.
++    if ((isInternalDisplay || FlagManager::getInstance().pacesetter_selection()) &&
++        shouldApplyOptimizationPolicy) {
++        applyOptimizationPolicy(__func__);
++    }
++
+     if (displayId == mFrontInternalDisplayId) {
+         mTimeStats->setPowerMode(mode);
+         mScheduler->setActiveDisplayPowerModeForRefreshRateStats(mode);
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index e148e413990e0f18568129922b9d25143f241b0b..4eb212ee0adb0062882a1e136693f8e1149d6bc3 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -1511,6 +1511,7 @@ private:
+     std::atomic_bool mForceFullDamage = false;
+ 
+     bool mLayerCachingEnabled = false;
++    bool mPropagateBackpressure = false;
+     bool mBackpressureGpuComposition = false;
+ 
+     LayerTracing mLayerTracing;
+diff --git a/services/vibratorservice/VibratorHalController.cpp b/services/vibratorservice/VibratorHalController.cpp
+index 302e3e12994d6a3a6e0bf9841c6f7d76ff6bed58..5ad4aa87292cf94dff696852c018635ebb7b785a 100644
+--- a/services/vibratorservice/VibratorHalController.cpp
++++ b/services/vibratorservice/VibratorHalController.cpp
+@@ -56,6 +56,16 @@ std::shared_ptr<HalWrapper> connectHal(std::shared_ptr<CallbackScheduler> schedu
+         }
+     }
+ 
++    serviceName = std::string(IVibrator::descriptor) + "/vibratorfeature";
++    if (AServiceManager_isDeclared(serviceName.c_str())) {
++        std::shared_ptr<IVibrator> hal = IVibrator::fromBinder(
++                ndk::SpAIBinder(AServiceManager_waitForService(serviceName.c_str())));
++        if (hal) {
++            ALOGV("Successfully connected to Xiaomi Vibrator HAL AIDL service.");
++            return std::make_shared<AidlHalWrapper>(std::move(scheduler), std::move(hal));
++        }
++    }
++
+     ALOGV("Vibrator HAL service not available.");
+     gHalExists = false;
+     return nullptr;

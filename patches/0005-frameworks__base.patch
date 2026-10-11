@@ -1,0 +1,3163 @@
+diff --git a/Android.bp b/Android.bp
+index 939c2417a627c2e130d09939f5708ccaaced767b..fe52236f4e62ef8d6a0da6fdd120a3fcfc9c0418 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -227,6 +227,7 @@ java_library {
+         "android.hardware.gnss-V2.1-java",
+         "android.hardware.health-V1.0-java-constants",
+         "android.hardware.radio-V1.6-java",
++        "vendor.samsung.hardware.radio-V2.2-java",
+         "android.hardware.radio.data-V5-java",
+         "android.hardware.radio.ims-V4-java",
+         "android.hardware.radio.messaging-V5-java",
+@@ -234,6 +235,7 @@ java_library {
+         "android.hardware.radio.network-V5-java",
+         "android.hardware.radio.sim-V5-java",
+         "android.hardware.radio.voice-V5-java",
++        "vendor.samsung.hardware.radio.network-V1-java",
+         "android.hardware.thermal-V1.0-java-constants",
+         "android.hardware.thermal-V1.0-java",
+         "android.hardware.thermal-V1.1-java",
+diff --git a/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java b/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
+index 0b286a7bf8de4909e0a131f1d2fb8b94f26ffb1b..eb550c3c45ca732c6fa836adbcb120756101f0bf 100644
+--- a/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
++++ b/apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java
+@@ -69,6 +69,7 @@ import android.os.Message;
+ import android.os.PowerExemptionManager;
+ import android.os.PowerExemptionManager.ReasonCode;
+ import android.os.PowerExemptionManager.TempAllowListType;
++import android.os.SystemProperties;
+ import android.os.PowerManager;
+ import android.os.PowerManager.ServiceType;
+ import android.os.PowerManagerInternal;
+@@ -2592,6 +2593,15 @@ public class DeviceIdleController extends SystemService
+         }
+ 
+         boolean useMotionSensor() {
++            // MTK vendor HALs on A16 kernels continuously fire motion events,
++            // preventing doze and burning battery. Auto-disable AnyMotionDetector
++            // for MTK devices (issue #21).
++            String hardware = SystemProperties.get("ro.hardware", "");
++            String board = SystemProperties.get("ro.board.platform", "");
++            if (hardware.startsWith("mt") || board.startsWith("mt")
++                    || hardware.contains("mtk") || board.contains("mtk")) {
++                return false;
++            }
+             return mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.config_autoPowerModeUseMotionSensor);
+         }
+diff --git a/cmds/bootanimation/BootAnimation.cpp b/cmds/bootanimation/BootAnimation.cpp
+index 29768246da757773a05628e474c6c32e7039646b..f06211a794b0320578a30e805b1750a0f377f9d4 100644
+--- a/cmds/bootanimation/BootAnimation.cpp
++++ b/cmds/bootanimation/BootAnimation.cpp
+@@ -577,6 +577,28 @@ status_t BootAnimation::initDisplaysAndSurfaces() {
+         display.initHeight = display.height = h;
+         mTargetInset = -1;
+ 
++        if ( mAnimation != nullptr ) {
++            SLOGE("Got screen size %d, animation size %d", display.width, mAnimation->width);
++            int origWidth = mAnimation->width;
++            if ( mAnimation->width*2 < display.width ) {
++                SLOGE("Making animation bigger");
++                mAnimation->width *= 2;
++                mAnimation->height *= 2;
++            } else if ( display.width < mAnimation->width ) {
++                SLOGE("Making animation smaller");
++                mAnimation->width /= 2;
++                mAnimation->height /= 2;
++            }
++            for (Animation::Part& part : mAnimation->parts) {
++                for(auto& frame: part.frames) {
++                    if(frame.trimWidth == origWidth && frame.trimX == 0 && frame.trimY == 0) {
++                        frame.trimWidth = mAnimation->width;
++                        frame.trimHeight = mAnimation->height;
++                    }
++                }
++            }
++        }
++
+         // Rotate the boot animation according to the value specified in the sysprop
+         // ro.bootanim.set_orientation_<display_id>. Four values are supported: ORIENTATION_0,
+         // ORIENTATION_90, ORIENTATION_180 and ORIENTATION_270.
+diff --git a/core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java b/core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java
+index fc06dd8de3b63bc04f6113990fe131100dcb6a53..e500b76e021c2e3a81401772807b48a3d2b7b59e 100644
+--- a/core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java
++++ b/core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java
+@@ -223,7 +223,18 @@ public class FrameworkParsingPackageUtils {
+                 continue;
+             }
+             // 3. Check if prop is equal to expected value.
+-            if (!currValue.equals(propValues[i])) {
++            final String value = propValues[i];
++            if (value.startsWith("+")) {
++                try {
++                    final java.util.regex.Pattern regex = java.util.regex.Pattern.compile(value.substring(1).replace("*", ".*"));
++                    java.util.regex.Matcher matcher = regex.matcher(currValue);
++                    if (!matcher.find()) {
++                        return false;
++                    }
++                } catch (java.util.regex.PatternSyntaxException e) {
++                    return false;
++                }
++            } else if (!currValue.equals(value)) {
+                 return false;
+             }
+         }
+diff --git a/core/java/android/hardware/Camera.java b/core/java/android/hardware/Camera.java
+index 14d8a28546bece3b5dce9bdc73623f0c50a60dec..bbcafde7287ed1e601c1e1ce0dab66c0a31ffabe 100644
+--- a/core/java/android/hardware/Camera.java
++++ b/core/java/android/hardware/Camera.java
+@@ -518,6 +518,11 @@ public class Camera {
+      * @see #open(int)
+      */
+     public static Camera open() {
++        int altPrimaryCamera = SystemProperties.getInt("persist.sys.alt_primary_camera", -1);
++        if (altPrimaryCamera > 0) {
++            return open(altPrimaryCamera);
++        }
++
+         int numberOfCameras = getNumberOfCameras();
+         CameraInfo cameraInfo = new CameraInfo();
+         for (int i = 0; i < numberOfCameras; i++) {
+diff --git a/core/java/android/hardware/camera2/CameraManager.java b/core/java/android/hardware/camera2/CameraManager.java
+index 5cd5ecd7beda79faff7f78119ae724d5e45d79b9..0aa66c14d20fe3e28bc65f654837e86f1ff28abc 100644
+--- a/core/java/android/hardware/camera2/CameraManager.java
++++ b/core/java/android/hardware/camera2/CameraManager.java
+@@ -2568,6 +2568,15 @@ public final class CameraManager {
+                             return s1.compareTo(s2);
+                         }
+                     }});
++
++            // HAXX: Allow overriding default primary camera (assumed to be camera 0) via property
++            // Should match with libcameraservice/common/CameraProviderManager.cpp
++            int altPrimaryCamera = SystemProperties.getInt("persist.sys.alt_primary_camera", -1);
++            if (altPrimaryCamera > 0 && altPrimaryCamera < cameraIds.length) {
++                String origPrimary = cameraIds[0];
++                cameraIds[0] = cameraIds[altPrimaryCamera];
++                cameraIds[altPrimaryCamera] = origPrimary;
++            }
+         }
+ 
+         private boolean shouldHideCamera(int currentDeviceId, int devicePolicy,
+diff --git a/core/java/android/hardware/display/AmbientDisplayConfiguration.java b/core/java/android/hardware/display/AmbientDisplayConfiguration.java
+index d341805b1588f7ebf68346da55b3ff674e376a79..1d163501c72474929c64454f37d79648d2a15830 100644
+--- a/core/java/android/hardware/display/AmbientDisplayConfiguration.java
++++ b/core/java/android/hardware/display/AmbientDisplayConfiguration.java
+@@ -28,6 +28,9 @@ import android.text.TextUtils;
+ import android.util.ArrayMap;
+ import android.util.SparseArray;
+ 
++import android.hardware.SensorManager;
++import android.hardware.Sensor;
++
+ import com.android.internal.R;
+ import com.android.internal.util.ArrayUtils;
+ 
+@@ -125,8 +128,20 @@ public class AmbientDisplayConfiguration {
+ 
+     /** @hide */
+     public boolean dozePickupSensorAvailable() {
+-        return mContext.getResources().getBoolean(R.bool.config_dozePulsePickup);
+-    }
++        SensorManager sm = mContext.getSystemService(SensorManager.class);
++        boolean found = false;
++        if(sm == null) {
++            android.util.Log.d("PHH", "Failed getting sensor manager, can't detect pickup sensor");
++        } else {
++            java.util.List<Sensor> sensors = sm.getSensorList(Sensor.TYPE_ALL);
++            for(Sensor s : sensors) {
++                if(Sensor.STRING_TYPE_PICK_UP_GESTURE.equals(s.getStringType())) {
++                    found = true;
++                    break;
++                }
++            }
++        }
++        return mContext.getResources().getBoolean(R.bool.config_dozePulsePickup) || found;    }
+ 
+     /** @hide */
+     public boolean tapGestureEnabled(int user) {
+diff --git a/core/java/android/hardware/fingerprint/FingerprintSensorConfigurations.java b/core/java/android/hardware/fingerprint/FingerprintSensorConfigurations.java
+index 586830c8d18999249e73405d2d59a96fe24f502b..d7fcfdb6df2b87dea78057df8bbd0d3948739546 100644
+--- a/core/java/android/hardware/fingerprint/FingerprintSensorConfigurations.java
++++ b/core/java/android/hardware/fingerprint/FingerprintSensorConfigurations.java
+@@ -29,6 +29,7 @@ import android.os.Parcel;
+ import android.os.Parcelable;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.os.SystemProperties;
+ import android.util.Log;
+ import android.util.Slog;
+ 
+@@ -172,6 +173,10 @@ public class FingerprintSensorConfigurations implements Parcelable {
+      * @return real fqName
+      */
+     public static String remapFqName(String fqName) {
++        if (SystemProperties.getBoolean("persist.sys.phh.virtual_sensors_are_real", false)) {
++            return fqName;
++        }
++
+         if (!fqName.contains(IFingerprint.DESCRIPTOR + "/virtual")) {
+             return fqName;  //no remap needed for real hardware HAL
+         } else {
+@@ -185,7 +190,7 @@ public class FingerprintSensorConfigurations implements Parcelable {
+      * @return aidl interface
+      */
+     public static IFingerprint getIFingerprint(String fqName) {
+-        if (fqName.contains("virtual")) {
++        if (fqName.contains("virtual") && !SystemProperties.getBoolean("persist.sys.phh.virtual_sensors_are_real", false)) {
+             String fqNameMapped = remapFqName(fqName);
+             Slog.i(TAG, "getIFingerprint fqName is mapped: " + fqName + "->" + fqNameMapped);
+             try {
+diff --git a/core/java/android/os/Environment.java b/core/java/android/os/Environment.java
+index f6109af55afd0bf594ab3b19b41d6f4cdc01a2da..3e57d614018e968644e0e83b757ef2e4f9ad68ba 100644
+--- a/core/java/android/os/Environment.java
++++ b/core/java/android/os/Environment.java
+@@ -210,7 +210,8 @@ public class Environment {
+      */
+     @RavenwoodRedirect(comment = "Use java props on Ravenwood")
+     private static String getEnvPath(String variableName) {
+-        return System.getenv(variableName);
++        String path = System.getenv(variableName);
++        return (path == null || path.isEmpty()) ? null : path;
+     }
+ 
+     static {
+diff --git a/core/java/android/os/FileUtils.java b/core/java/android/os/FileUtils.java
+index 16ea0ad949f18aaa94911527d71624bc149156d2..e928df0f40df7896ef16f25e86b85ba7b9743891 100644
+--- a/core/java/android/os/FileUtils.java
++++ b/core/java/android/os/FileUtils.java
+@@ -482,7 +482,6 @@ public final class FileUtils {
+                     return copyInternalSpliceSocket(in, out, count, signal, executor, listener);
+                 }
+             } catch (ErrnoException e) {
+-                throw e.rethrowAsIOException();
+             }
+         }
+ 
+diff --git a/core/java/android/os/storage/StorageManager.java b/core/java/android/os/storage/StorageManager.java
+index e2ef800b5744e2b6609449b80bb8f206a299b3a0..b39f2a5493d2eb5c1e787640b3f40c13a3e08cb6 100644
+--- a/core/java/android/os/storage/StorageManager.java
++++ b/core/java/android/os/storage/StorageManager.java
+@@ -1713,6 +1713,80 @@ public class StorageManager {
+         return RoSystemProperties.CRYPTO_FILE_ENCRYPTED;
+     }
+ 
++    /** {@hide}
++     * Is this device encryptable or already encrypted?
++     * @return true for encryptable or encrypted
++     *         false not encrypted and not encryptable
++     */
++    public static boolean isEncryptable() {
++        return RoSystemProperties.CRYPTO_ENCRYPTABLE;
++    }
++
++    /** {@hide}
++     * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
++     */
++    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
++    @Deprecated
++    public static boolean isFileEncryptedNativeOnly() {
++        return false;
++    }
++
++    /** {@hide}
++     * Is this device block encrypted?
++     * @return true for block encrypted. (Implies isEncrypted() == true)
++     *         false not encrypted or file encrypted
++     */
++    public static boolean isBlockEncrypted() {
++        return false;
++    }
++
++    /** {@hide}
++     * Is this device block encrypted with credentials?
++     * @return true for crediential block encrypted.
++     *         (Implies isBlockEncrypted() == true)
++     *         false not encrypted, file encrypted or default block encrypted
++     */
++    public static boolean isNonDefaultBlockEncrypted() {
++        return false;
++    }
++
++    /** {@hide}
++     * Is this device in the process of being block encrypted?
++     * @return true for encrypting.
++     *         false otherwise
++     * Whether device isEncrypted at this point is undefined
++     * Note that only system services and CryptKeeper will ever see this return
++     * true - no app will ever be launched in this state.
++     * Also note that this state will not change without a teardown of the
++     * framework, so no service needs to check for changes during their lifespan
++     */
++    public static boolean isBlockEncrypting() {
++        return false;
++    }
++
++    /** {@hide}
++     * Is this device non default block encrypted and in the process of
++     * prompting for credentials?
++     * @return true for prompting for credentials.
++     *         (Implies isNonDefaultBlockEncrypted() == true)
++     *         false otherwise
++     * Note that only system services and CryptKeeper will ever see this return
++     * true - no app will ever be launched in this state.
++     * Also note that this state will not change without a teardown of the
++     * framework, so no service needs to check for changes during their lifespan
++     */
++    public static boolean inCryptKeeperBounce() {
++        return false;
++    }
++
++    /** {@hide}
++     * @deprecated Use {@link #isFileEncrypted} instead, since emulated FBE is no longer supported.
++     */
++    @Deprecated
++    public static boolean isFileEncryptedNativeOrEmulated() {
++        return false;
++    }
++
+     /** @hide */
+     public static boolean hasAdoptable() {
+         switch (SystemProperties.get(PROP_ADOPTABLE)) {
+diff --git a/core/java/android/view/DisplayCutout.java b/core/java/android/view/DisplayCutout.java
+index c34da2b9951036876702f1d0a2440f3f07e4085a..d9872c837cf822eee8f1b4de7f74cd2eb5d7c7a4 100644
+--- a/core/java/android/view/DisplayCutout.java
++++ b/core/java/android/view/DisplayCutout.java
+@@ -1184,12 +1184,21 @@ public final class DisplayCutout {
+     public static DisplayCutout fromResourcesRectApproximation(Resources res,
+             String displayUniqueId, int physicalDisplayWidth, int physicalDisplayHeight,
+             int displayWidth, int displayHeight) {
+-        return pathAndDisplayCutoutFromSpec(getDisplayCutoutPath(res, displayUniqueId),
+-                getDisplayCutoutApproximationRect(res, displayUniqueId), physicalDisplayWidth,
+-                physicalDisplayHeight, displayWidth, displayHeight,
+-                DENSITY_DEVICE_STABLE / (float) DENSITY_DEFAULT,
+-                getWaterfallInsets(res, displayUniqueId),
+-                getDisplayCutoutSideOverrides(res, displayUniqueId)).second;
++        try {
++            return pathAndDisplayCutoutFromSpec(getDisplayCutoutPath(res, displayUniqueId),
++                    getDisplayCutoutApproximationRect(res, displayUniqueId), physicalDisplayWidth,
++                    physicalDisplayHeight, displayWidth, displayHeight,
++                    DENSITY_DEVICE_STABLE / (float) DENSITY_DEFAULT,
++                    getWaterfallInsets(res, displayUniqueId),
++                    getDisplayCutoutSideOverrides(res, displayUniqueId)).second;
++        } catch(Throwable t) {
++            return pathAndDisplayCutoutFromSpec(getDisplayCutoutPath(res, displayUniqueId),
++                    null, physicalDisplayWidth,
++                    physicalDisplayHeight, displayWidth, displayHeight,
++                    DENSITY_DEVICE_STABLE / (float) DENSITY_DEFAULT,
++                    getWaterfallInsets(res, displayUniqueId),
++                    getDisplayCutoutSideOverrides(res, displayUniqueId)).second;
++        }
+     }
+ 
+     /**
+diff --git a/core/java/android/view/KeyEvent.java b/core/java/android/view/KeyEvent.java
+index 34a94baacccd655b020f35cb406c64e7661e91df..9267ea21a3e503aa8a53a069f397a94e0a7eaca4 100644
+--- a/core/java/android/view/KeyEvent.java
++++ b/core/java/android/view/KeyEvent.java
+@@ -2945,6 +2945,7 @@ public class KeyEvent extends InputEvent implements Parcelable {
+             case KeyEvent.KEYCODE_CAMERA:
+             case KeyEvent.KEYCODE_FOCUS:
+             case KeyEvent.KEYCODE_MENU:
++            case KeyEvent.KEYCODE_HOME:
+             case KeyEvent.KEYCODE_PAIRING:
+             case KeyEvent.KEYCODE_STEM_1:
+             case KeyEvent.KEYCODE_STEM_2:
+diff --git a/core/java/android/view/RoundedCorners.java b/core/java/android/view/RoundedCorners.java
+index 1f841bf533643112b088200789ef93aefeec3299..c5a5fe1849a4ca047c88ee90828cfe5570869537 100644
+--- a/core/java/android/view/RoundedCorners.java
++++ b/core/java/android/view/RoundedCorners.java
+@@ -31,6 +31,7 @@ import android.content.res.TypedArray;
+ import android.graphics.Rect;
+ import android.os.Parcel;
+ import android.os.Parcelable;
++import android.os.SystemProperties;
+ import android.util.DisplayUtils;
+ import android.util.Pair;
+ import android.view.RoundedCorner.Position;
+@@ -197,6 +198,10 @@ public class RoundedCorners implements Parcelable {
+         } else {
+             radius = res.getDimensionPixelSize(R.dimen.rounded_corner_radius);
+         }
++        int syspropRadius = SystemProperties.getInt("persist.sys.phh.rounded_corners_padding", -1);
++        if (syspropRadius >= 0) {
++            radius = syspropRadius;
++        }
+         array.recycle();
+         // For devices with round displays (e.g. watches) that don't otherwise provide the rounded
+         // corner radius via resource overlays, we can infer the corner radius directly from the
+@@ -225,6 +230,10 @@ public class RoundedCorners implements Parcelable {
+         } else {
+             radius = res.getDimensionPixelSize(R.dimen.rounded_corner_radius_top);
+         }
++        int syspropRadius = SystemProperties.getInt("persist.sys.phh.rounded_corners_padding", -1);
++        if (syspropRadius >= 0) {
++            radius = syspropRadius;
++        }
+         array.recycle();
+         return radius;
+     }
+@@ -248,6 +257,10 @@ public class RoundedCorners implements Parcelable {
+         } else {
+             radius = res.getDimensionPixelSize(R.dimen.rounded_corner_radius_bottom);
+         }
++        int syspropRadius = SystemProperties.getInt("persist.sys.phh.rounded_corners_padding", -1);
++        if (syspropRadius >= 0) {
++            radius = syspropRadius;
++        }
+         array.recycle();
+         return radius;
+     }
+diff --git a/core/java/android/view/animation/AnimationUtils.java b/core/java/android/view/animation/AnimationUtils.java
+index dbb68372ab985389a1d18ef423b70c91ce12e1a9..ad19b8033eb0b6eea922735e181c0e313cb4bd6c 100644
+--- a/core/java/android/view/animation/AnimationUtils.java
++++ b/core/java/android/view/animation/AnimationUtils.java
+@@ -30,13 +30,17 @@ import android.content.res.Resources.NotFoundException;
+ import android.content.res.Resources.Theme;
+ import android.content.res.XmlResourceParser;
+ import android.os.SystemClock;
++import android.os.SystemProperties;
+ import android.ravenwood.annotation.RavenwoodIgnore;
+ import android.ravenwood.annotation.RavenwoodKeepPartialClass;
+ import android.util.AttributeSet;
++import android.util.DisplayMetrics;
+ import android.util.TimeUtils;
+ import android.util.Xml;
+ import android.view.InflateException;
+ 
++import com.android.internal.R;
++
+ import org.xmlpull.v1.XmlPullParser;
+ import org.xmlpull.v1.XmlPullParserException;
+ 
+@@ -224,6 +228,20 @@ public class AnimationUtils {
+     public static Animation loadAnimation(Context context, @AnimRes int id)
+             throws NotFoundException {
+ 
++        if (SystemProperties.getBoolean("persist.sys.activity_anim_perf_override", false)) {
++            ActivityAnimations.maybeInit(context);
++            switch (id) {
++                case R.anim.activity_open_enter:
++                    return ActivityAnimations.getOpenEnter();
++                case R.anim.activity_open_exit:
++                    return ActivityAnimations.getOpenExit();
++                case R.anim.activity_close_enter:
++                    return ActivityAnimations.getCloseEnter();
++                case R.anim.activity_close_exit:
++                    return ActivityAnimations.getCloseExit();
++            }
++        }
++
+         XmlResourceParser parser = null;
+         try {
+             parser = context.getResources().getAnimation(id);
+@@ -504,4 +522,113 @@ public class AnimationUtils {
+         }
+         return interpolator;
+     }
++
++    /** @hide */
++    public static final class ActivityAnimations {
++
++        private static Animation sOpenEnter;
++        private static Animation sOpenExit;
++        private static Animation sCloseEnter;
++        private static Animation sCloseExit;
++
++        private static Interpolator sLinearOutSlowInInterpolator;
++        private static float sScaleRatio;
++        private static float sDensity;
++
++        private static final long DEFAULT_DURATION = 133L;
++
++        private ActivityAnimations() {}
++
++        /** @hide */
++        public static void maybeInit(Context context) {
++            if (sLinearOutSlowInInterpolator == null) {
++                sLinearOutSlowInInterpolator = AnimationUtils.loadInterpolator(
++                        context, R.interpolator.linear_out_slow_in);
++            }
++            if (sDensity == 0f) {
++                DisplayMetrics dm = context.getResources().getDisplayMetrics();
++                float sw = Math.min(dm.widthPixels, dm.heightPixels) / dm.density;
++                sScaleRatio = sw / 420f;
++                sDensity = dm.density;
++            }
++        }
++
++        private static float scaledDp(float dp) {
++            return dp * sDensity * sScaleRatio;
++        }
++
++        private static class ActivityAnimFactory {
++            private float fromX, toX;
++            private long duration = DEFAULT_DURATION;
++            private Interpolator interpolator = sLinearOutSlowInInterpolator;
++
++            public ActivityAnimFactory fromX(float dp) {
++                this.fromX = scaledDp(dp);
++                return this;
++            }
++
++            public ActivityAnimFactory toX(float dp) {
++                this.toX = scaledDp(dp);
++                return this;
++            }
++
++            public Animation build() {
++                TranslateAnimation slide = new TranslateAnimation(
++                        Animation.ABSOLUTE, fromX,
++                        Animation.ABSOLUTE, toX,
++                        Animation.ABSOLUTE, 0f,
++                        Animation.ABSOLUTE, 0f
++                );
++                slide.setDuration(duration);
++                slide.setInterpolator(interpolator);
++                AnimationSet set = new AnimationSet(false);
++                set.addAnimation(slide);
++                return set;
++            }
++        }
++
++        /** @hide */
++        public static Animation getOpenEnter() {
++            if (sOpenEnter == null) {
++                sOpenEnter = new ActivityAnimFactory()
++                        .fromX(48)
++                        .toX(0)
++                        .build();
++            }
++            return sOpenEnter;
++        }
++
++        /** @hide */
++        public static Animation getOpenExit() {
++            if (sOpenExit == null) {
++                sOpenExit = new ActivityAnimFactory()
++                        .fromX(0)
++                        .toX(-48)
++                        .build();
++            }
++            return sOpenExit;
++        }
++
++        /** @hide */
++        public static Animation getCloseEnter() {
++            if (sCloseEnter == null) {
++                sCloseEnter = new ActivityAnimFactory()
++                        .fromX(-48)
++                        .toX(0)
++                        .build();
++            }
++            return sCloseEnter;
++        }
++
++        /** @hide */
++        public static Animation getCloseExit() {
++            if (sCloseExit == null) {
++                sCloseExit = new ActivityAnimFactory()
++                        .fromX(0)
++                        .toX(48)
++                        .build();
++            }
++            return sCloseExit;
++        }
++    }
+ }
+diff --git a/core/java/com/android/internal/os/RoSystemProperties.java b/core/java/com/android/internal/os/RoSystemProperties.java
+index 5311f7a163df570005072ba17136f209e687e313..e202425ac5f8650d2a93be73aa1ce9935e7f1d92 100644
+--- a/core/java/com/android/internal/os/RoSystemProperties.java
++++ b/core/java/com/android/internal/os/RoSystemProperties.java
+@@ -70,10 +70,14 @@ public class RoSystemProperties {
+     public static final CryptoProperties.type_values CRYPTO_TYPE =
+             CryptoProperties.type().orElse(CryptoProperties.type_values.NONE);
+     // These are pseudo-properties
++    public static final boolean CRYPTO_ENCRYPTABLE =
++            CRYPTO_STATE != CryptoProperties.state_values.UNSUPPORTED;
+     public static final boolean CRYPTO_ENCRYPTED =
+             CRYPTO_STATE == CryptoProperties.state_values.ENCRYPTED;
+     public static final boolean CRYPTO_FILE_ENCRYPTED =
+             CRYPTO_TYPE == CryptoProperties.type_values.FILE;
++    public static final boolean CRYPTO_BLOCK_ENCRYPTED =
++            CRYPTO_TYPE == CryptoProperties.type_values.BLOCK;
+ 
+     public static final boolean CONTROL_PRIVAPP_PERMISSIONS_LOG =
+             "log".equalsIgnoreCase(CONTROL_PRIVAPP_PERMISSIONS);
+diff --git a/core/jni/com_android_internal_os_Zygote.cpp b/core/jni/com_android_internal_os_Zygote.cpp
+index a92c6c8718ee604c25933681956f4761e0a78ce1..a5ecd9fa97a1e8c640254082b0132f2d6fd87d95 100644
+--- a/core/jni/com_android_internal_os_Zygote.cpp
++++ b/core/jni/com_android_internal_os_Zygote.cpp
+@@ -1969,10 +1969,12 @@ static void SpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArray gids,
+     if (getuid() == 0) {
+         const int rc = createProcessGroup(uid, getpid());
+         if (rc != 0) {
++#if 0
+             fail_fn(rc == -EROFS ? CREATE_ERROR("createProcessGroup failed, kernel missing "
+                                                 "CONFIG_CGROUP_CPUACCT?")
+                                  : CREATE_ERROR("createProcessGroup(%d, %d) failed: %s", uid,
+                                                 /* pid= */ 0, strerror(-rc)));
++#endif
+         }
+ 
+         if (is_system_server && UsePerAppMemcg()) {
+diff --git a/packages/SettingsLib/DisplayUtils/src/com/android/settingslib/display/BrightnessUtils.java b/packages/SettingsLib/DisplayUtils/src/com/android/settingslib/display/BrightnessUtils.java
+index 3c06f8ae9972f8cd205cca14303e3e7de9de6a8c..63c2f0d1a6b218effdae833ba74a1fbc4199164d 100644
+--- a/packages/SettingsLib/DisplayUtils/src/com/android/settingslib/display/BrightnessUtils.java
++++ b/packages/SettingsLib/DisplayUtils/src/com/android/settingslib/display/BrightnessUtils.java
+@@ -19,14 +19,19 @@ package com.android.settingslib.display;
+ import android.os.SystemProperties;
+ import android.util.MathUtils;
+ 
++import com.android.internal.display.BrightnessSynchronizer;
++
+ /** Utility methods for calculating the display brightness. */
+ public class BrightnessUtils {
+ 
+     public static final boolean sDisableGammaConversion =
+             SystemProperties.getBoolean("sys.brightness.disable_gamma_conversion", false);
+ 
++    public static final boolean LowGammaBrightness =
++            SystemProperties.getBoolean("persist.sys.phh.low_gamma_brightness", false);
++
+     public static final int GAMMA_SPACE_MIN = 0;
+-    public static final int GAMMA_SPACE_MAX = 65535;
++    public static final int GAMMA_SPACE_MAX = LowGammaBrightness ? 255 : 65535;
+ 
+     // Hybrid Log Gamma constant values
+     private static final float R = 0.5f;
+@@ -104,7 +109,8 @@ public class BrightnessUtils {
+ 
+         // Re-normalize to the range [0, 1]
+         // in order to derive the correct setting value.
+-        return MathUtils.lerp(min, max, normalizedRet / 12);
++        return LowGammaBrightness ? MathUtils.constrain(BrightnessSynchronizer.brightnessIntToFloat(val),
++                         min, max) : MathUtils.lerp(min, max, normalizedRet / 12);
+     }
+ 
+     /**
+@@ -156,6 +162,7 @@ public class BrightnessUtils {
+             ret = A * MathUtils.log(normalizedVal - B) + C;
+         }
+ 
+-        return Math.round(MathUtils.lerp(GAMMA_SPACE_MIN, GAMMA_SPACE_MAX, ret));
++        return LowGammaBrightness ? BrightnessSynchronizer.brightnessFloatToInt(
++                       MathUtils.constrain(val, min, max)) : Math.round(MathUtils.lerp(GAMMA_SPACE_MIN, GAMMA_SPACE_MAX, ret));
+     }
+ }
+diff --git a/packages/SettingsProvider/res/values/defaults.xml b/packages/SettingsProvider/res/values/defaults.xml
+index ce8de5e8d525e60b37773695d43d7ce34f1ab794..e054045a09723066a6a167b6e97c98ce40d8839d 100644
+--- a/packages/SettingsProvider/res/values/defaults.xml
++++ b/packages/SettingsProvider/res/values/defaults.xml
+@@ -38,7 +38,7 @@
+     <fraction name="def_window_transition_scale">100%</fraction>
+     <bool name="def_haptic_feedback">true</bool>
+ 
+-    <bool name="def_bluetooth_on">true</bool>
++    <bool name="def_bluetooth_on">false</bool>
+     <bool name="def_wifi_display_on">false</bool>
+     <bool name="def_install_non_market_apps">false</bool>
+     <!-- 0 == off, 3 == on -->
+diff --git a/packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java b/packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java
+index 1231f5632649153e466ed000e0a3bb69a95d6f7a..ef0461189f94ea86dfa38b4467643cdfc693efc3 100644
+--- a/packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java
++++ b/packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java
+@@ -3913,6 +3913,16 @@ public class SettingsProvider extends ContentProvider {
+                     migrateLegacySettingsForUserLocked(dbHelper, database, userId,
+                             Context.DEVICE_ID_DEFAULT);
+ 
++                    // Ensure SSAID settings state exists before running upgrade.
++                    // migrateLegacySettingsForUserLocked creates system, secure, and global
++                    // settings states, but not SSAID. The upgrade path (version 136->137)
++                    // calls getSsaidSettingsLocked() which returns null without this,
++                    // causing an NPE on devices upgrading from old vendor partitions
++                    // (e.g. GSI over Android 11 vendor).
++                    final long ssaidKey = makeKey(SETTINGS_TYPE_SSAID, userId,
++                            Context.DEVICE_ID_DEFAULT);
++                    ensureSettingsStateLocked(ssaidKey);
++
+                     // Upgrade to the latest version.
+                     UpgradeController upgrader = new UpgradeController(userId,
+                             Context.DEVICE_ID_DEFAULT);
+@@ -4758,17 +4768,28 @@ public class SettingsProvider extends ContentProvider {
+                         }
+ 
+                         final SettingsState ssaidSettings = getSsaidSettingsLocked(userId);
+-                        for (PackageInfo info : packages) {
+-                            // Check if the UID already has an entry in the table.
+-                            final String uid = Integer.toString(info.applicationInfo.uid);
+-                            final Setting ssaid = ssaidSettings.getSettingLocked(uid);
+-
+-                            if (ssaid.isNull() || ssaid.getValue() == null) {
+-                                // Android Id doesn't exist for this package so create it.
+-                                ssaidSettings.insertSettingOverrideableByRestoreLocked(
+-                                        uid, legacySsaid, null, true, info.packageName);
+-                                if (DEBUG) {
+-                                    Slog.d(LOG_TAG, "Keep the legacy ssaid for uid=" + uid);
++                        if (ssaidSettings == null) {
++                            Slog.w(LOG_TAG, "SSAID settings not available for user "
++                                    + userId + ", skipping legacy SSAID migration");
++                        } else {
++                            for (PackageInfo info : packages) {
++                                // Check if the UID already has an entry in the table.
++                                final String uid =
++                                        Integer.toString(info.applicationInfo.uid);
++                                final Setting ssaid =
++                                        ssaidSettings.getSettingLocked(uid);
++
++                                if (ssaid.isNull() || ssaid.getValue() == null) {
++                                    // Android Id doesn't exist for this package so
++                                    // create it.
++                                    ssaidSettings
++                                            .insertSettingOverrideableByRestoreLocked(
++                                                    uid, legacySsaid, null, true,
++                                                    info.packageName);
++                                    if (DEBUG) {
++                                        Slog.d(LOG_TAG,
++                                                "Keep the legacy ssaid for uid=" + uid);
++                                    }
+                                 }
+                             }
+                         }
+diff --git a/packages/SystemUI/Android.bp b/packages/SystemUI/Android.bp
+index b41566be77c7972a74a8119bde88e6adec2cf70f..4fa6f49b0a9feaea003e256c58848c576aacb16d 100644
+--- a/packages/SystemUI/Android.bp
++++ b/packages/SystemUI/Android.bp
+@@ -592,6 +592,10 @@ android_library {
+         "displaylib",
+         "aconfig_settings_flags_lib",
+         "vendor.lineage.powershare-V1-java",
++        "vendor.goodix.hardware.biometrics.fingerprint-V2.1-java",
++        "vendor.xiaomi.hw.touchfeature-V1.0-java",
++        "vendor.xiaomi.hardware.fingerprintextension-V1.0-java",
++        "vendor.nubia.ifaa-V1.0-java",
+     ],
+     javacflags: [
+         "-Aroom.schemaLocation=frameworks/base/packages/SystemUI/schemas",
+diff --git a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
+index c906e65941321559f35c6b82adcf76e72177e871..e48bdeffcb4e6b55459f875f71bddf57a6be9fe3 100644
+--- a/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
++++ b/packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java
+@@ -38,6 +38,7 @@ import android.graphics.Rect;
+ import android.hardware.biometrics.BiometricFingerprintConstants;
+ import android.hardware.biometrics.BiometricPrompt;
+ import android.hardware.biometrics.SensorProperties;
++import android.hardware.display.ColorDisplayManager;
+ import android.hardware.display.DisplayManager;
+ import android.hardware.fingerprint.FingerprintManager;
+ import android.hardware.fingerprint.FingerprintSensorProperties;
+@@ -51,6 +52,7 @@ import android.os.Handler;
+ import android.os.Looper;
+ import android.os.PowerManager;
+ import android.os.Trace;
++import android.os.SystemProperties;
+ import android.os.VibrationAttributes;
+ import android.os.VibrationEffect;
+ import android.provider.Settings;
+@@ -130,8 +132,12 @@ import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.Set;
+ import java.util.concurrent.Executor;
++import java.io.File;
++import java.io.FileWriter;
++import java.io.IOException;
+ 
+ import javax.inject.Inject;
++import vendor.nubia.ifaa.V1_0.IIfaa;
+ 
+ /**
+  * Shows and hides the under-display fingerprint sensor (UDFPS) overlay, handles UDFPS touch events,
+@@ -195,6 +201,8 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+     @NonNull private final CoroutineScope mScope;
+     @NonNull private final InputManager mInputManager;
+     @NonNull private final SelectedUserInteractor mSelectedUserInteractor;
++    @NonNull private final ColorDisplayManager mColorDisplayManager;
++    private boolean mIgnoreExtraDim;
+     @NonNull private final MSDLPlayer mMsdlPlayer;
+     private final boolean mIgnoreRefreshRate;
+     private final KeyguardTransitionInteractor mKeyguardTransitionInteractor;
+@@ -292,6 +300,47 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+                 public void onViewDetachedFromWindow(@NonNull View v) {}
+             };
+ 
++    // Nubia 6 series fingerprint control command
++    // cmd = 13 -> finger down
++    // cmd = 14 -> after UI ready
++    // cmd = 15 -> finger up
++    public byte[] processCmd(int cmd, int param1, int param2, byte[] send_buf, int length) {
++        try {
++            if (cmd == 999) {
++                Log.d(TAG, "processCmd: 999");
++                return null;
++            }
++            ArrayList<Byte> sendList = new ArrayList<>();
++            if (send_buf != null) {
++                for (byte b : send_buf) {
++                    sendList.add(Byte.valueOf(b));
++                }
++            }
++            if (send_buf == null) {
++                Log.d(TAG, "FingerprintService send_buf = " + send_buf);
++            }
++            IIfaa iIfaaDaemon = IIfaa.getService();
++            if (iIfaaDaemon == null) {
++                Log.d(TAG, "processCmd: no iIfaaDaemon!");
++                return null;
++            }
++            ArrayList<Byte> resultList = iIfaaDaemon.processCmd(cmd, param1, param2, sendList, length);
++            int n = resultList.size();
++            Log.d(TAG, "FingerprintService result length n = " + n);
++            if (n == 0) {
++                return null;
++            }
++            byte[] result = new byte[n];
++            for (int i = 0; i < n; i++) {
++                result[i] = resultList.get(i).byteValue();
++            }
++            return result;
++        } catch (Exception e) {
++            e.printStackTrace();
++            return null;
++        }
++    };
++
+     @Override
+     public void dump(@NonNull PrintWriter pw, @NonNull String[] args) {
+         final int touchConfigId = mContext.getResources().getInteger(
+@@ -731,7 +780,8 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+             @Application CoroutineScope scope,
+             UserActivityNotifier userActivityNotifier,
+             Lazy<WakefulnessLifecycle> wakefulnessLifecycle,
+-            MSDLPlayer msdlPlayer) {
++            MSDLPlayer msdlPlayer,
++            @NonNull ColorDisplayManager colorDisplayManager) {
+         mContext = context;
+         mExecution = execution;
+         mVibrator = vibrator;
+@@ -779,6 +829,7 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+         mInputManager = inputManager;
+         mSelectedUserInteractor = selectedUserInteractor;
+         mKeyguardTransitionInteractor = keyguardTransitionInteractor;
++        mColorDisplayManager = colorDisplayManager;
+ 
+         mTouchProcessor = singlePointerTouchProcessor;
+         mSessionTracker = sessionTracker;
+@@ -857,7 +908,10 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+             Log.d(TAG, "showUdfpsOverlay | the overlay is already showing");
+             return;
+         }
+-
++        mIgnoreExtraDim = mColorDisplayManager.isReduceBrightColorsActivated();
++        if (mIgnoreExtraDim) {
++            Log.d(TAG, "Current extra dim state (showUdfpsOverlay): " + mIgnoreExtraDim);
++        }
+         mOverlay = overlay;
+         final int requestReason = overlay.getRequestReason();
+         if (requestReason == REASON_AUTH_KEYGUARD
+@@ -1092,6 +1146,10 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+             return;
+         }
+         if (isOptical()) {
++            if (mIgnoreExtraDim) {
++                mColorDisplayManager.setReduceBrightColorsActivated(false);
++                Log.d(TAG, "Extra dim disabled");
++            }
+             mLatencyTracker.onActionStart(ACTION_UDFPS_ILLUMINATE);
+         }
+         // Refresh screen timeout and boost process priority if possible.
+@@ -1121,12 +1179,19 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+                 udfpsView.configureDisplay(() -> dispatchOnUiReady(requestId));
+             }
+         }
++        if(SystemProperties.get("ro.vendor.build.fingerprint").contains("nubia/NX669")) {
++            processCmd(13, 0, 0, new byte[0], 0);
++        }
+ 
+         if (isOptical()) {
+             for (Callback cb : mCallbacks) {
+                 cb.onFingerDown();
+             }
+         }
++        if(SystemProperties.get("ro.vendor.build.fingerprint").contains("nubia/NX669")) {
++            processCmd(14, 0, 0, new byte[0], 0);
++        }
++
+     }
+ 
+     private void onFingerUp(long requestId, @NonNull View view) {
+@@ -1160,8 +1225,16 @@ public class UdfpsController implements DozeReceiver, Dumpable {
+         mActivePointerId = MotionEvent.INVALID_POINTER_ID;
+         mAcquiredReceived = false;
+         if (mOnFingerDown) {
++            if (mIgnoreExtraDim && isOptical()) {
++                mColorDisplayManager.setReduceBrightColorsActivated(true);
++                Log.d(TAG, "Extra dim restored");
++            }
+             mFingerprintManager.onPointerUp(requestId, mSensorProps.sensorId, pointerId, x,
+                     y, minor, major, orientation, time, gestureStart, isAod);
++            if(SystemProperties.get("ro.vendor.build.fingerprint").contains("nubia/NX669")) {
++                processCmd(15, 0, 0, new byte[0], 0);
++            }
++
+             if (isOptical()) {
+                 for (Callback cb : mCallbacks) {
+                     cb.onFingerUp();
+diff --git a/packages/SystemUI/src/com/android/systemui/brightness/shared/model/GammaBrightness.kt b/packages/SystemUI/src/com/android/systemui/brightness/shared/model/GammaBrightness.kt
+index 7eba6268869cd1484cca99e520de4a59cb49fc5e..c15137ae0b1c751e5fb39533178ca3875a34f14e 100644
+--- a/packages/SystemUI/src/com/android/systemui/brightness/shared/model/GammaBrightness.kt
++++ b/packages/SystemUI/src/com/android/systemui/brightness/shared/model/GammaBrightness.kt
+@@ -16,7 +16,6 @@
+ 
+ package com.android.systemui.brightness.shared.model
+ 
+-import androidx.annotation.IntRange
+ import com.android.settingslib.display.BrightnessUtils
+ import com.android.systemui.log.table.TableLogBuffer
+ import com.android.systemui.util.kotlin.pairwiseBy
+@@ -24,12 +23,14 @@ import kotlinx.coroutines.flow.Flow
+ 
+ @JvmInline
+ value class GammaBrightness(
+-    @IntRange(
+-        from = BrightnessUtils.GAMMA_SPACE_MIN.toLong(),
+-        to = BrightnessUtils.GAMMA_SPACE_MAX.toLong()
+-    )
+     val value: Int
+-)
++) {
++    init {
++        require(value == -1 || value in BrightnessUtils.GAMMA_SPACE_MIN..BrightnessUtils.GAMMA_SPACE_MAX) {
++            "Value must be in range ${BrightnessUtils.GAMMA_SPACE_MIN} to ${BrightnessUtils.GAMMA_SPACE_MAX}"
++        }
++    }
++}
+ 
+ internal fun Flow<GammaBrightness>.logDiffForTable(
+     tableLogBuffer: TableLogBuffer,
+diff --git a/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardViewMediator.java b/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardViewMediator.java
+index 62c41395da5752d7d871cdb666bada919569fde6..05e5271b13dc57b496746fb679e5845d585cb379 100644
+--- a/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardViewMediator.java
++++ b/packages/SystemUI/src/com/android/systemui/keyguard/KeyguardViewMediator.java
+@@ -3995,7 +3995,11 @@ public class KeyguardViewMediator implements CoreStartable,
+         Trace.beginSection("KeyguardViewMediator#handleMotifyStartedWakingUp");
+         synchronized (KeyguardViewMediator.this) {
+             if (DEBUG) Log.d(TAG, "handleNotifyWakingUp");
+-            mKeyguardViewControllerLazy.get().onStartedWakingUp();
++            try {
++                mKeyguardViewControllerLazy.get().onStartedWakingUp();
++            } catch(Throwable t) {
++                android.util.Log.e("PHH", "handleNotifyStartedWakingUp crashed bip", t);
++            }
+         }
+         Trace.endSection();
+     }
+diff --git a/packages/SystemUI/src/com/android/systemui/media/controls/ui/controller/MediaCarouselController.kt b/packages/SystemUI/src/com/android/systemui/media/controls/ui/controller/MediaCarouselController.kt
+index b9056e0c9e43269f3d1ba35becacc4a25e405eaa..ebb6d65bd176da79b056f93122761347c7032f76 100644
+--- a/packages/SystemUI/src/com/android/systemui/media/controls/ui/controller/MediaCarouselController.kt
++++ b/packages/SystemUI/src/com/android/systemui/media/controls/ui/controller/MediaCarouselController.kt
+@@ -23,6 +23,7 @@ import android.content.Intent
+ import android.content.res.ColorStateList
+ import android.content.res.Configuration
+ import android.database.ContentObserver
++import android.os.SystemProperties
+ import android.os.UserHandle
+ import android.provider.Settings
+ import android.provider.Settings.ACTION_MEDIA_CONTROLS_SETTINGS
+@@ -966,7 +967,7 @@ constructor(
+                         desiredHostState.showsOnlyActiveMedia
+ 
+                 for (mediaPlayer in MediaPlayerData.players()) {
+-                    if (animate) {
++                    if (animate && !SystemProperties.getBoolean("persist.sys.phh.no_media_carousel_animation", false)) {
+                         mediaPlayer.mediaViewController.animatePendingStateChange(
+                             duration = duration,
+                             delay = startDelay,
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/QSHostAdapter.kt b/packages/SystemUI/src/com/android/systemui/qs/QSHostAdapter.kt
+index dc3b58247152410bbc7ac044264f7e65cf082c1c..58c832d2567c7b5459390d54a160defb22a89d4f 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/QSHostAdapter.kt
++++ b/packages/SystemUI/src/com/android/systemui/qs/QSHostAdapter.kt
+@@ -102,7 +102,12 @@ constructor(
+     }
+ 
+     override fun addTile(component: ComponentName, end: Boolean) {
+-        interactor.addTile(TileSpec.create(component), if (end) POSITION_AT_END else 0)
++        // y700-native-bypass-v1: offer the bypass tile at the end of the list.
++        val addAtEnd = end ||
++            (component.packageName == "com.android.settings" &&
++                component.className ==
++                    "com.android.settings.fuelgauge.y700.Y700BypassTile")
++        interactor.addTile(TileSpec.create(component), if (addAtEnd) POSITION_AT_END else 0)
+     }
+ 
+     override fun changeTilesByUser(previousTiles: List<String>, newTiles: List<String>) {
+diff --git a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
+index d5bc74c18d2e78c9d11b217f6197cf34cfd520f3..7ff063eca1a4f7c72731a5eb48852b414f30006f 100644
+--- a/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
++++ b/packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java
+@@ -377,9 +377,15 @@ public class BrightnessController implements ToggleSlider.Listener, MirroredBrig
+                 : MetricsEvent.ACTION_BRIGHTNESS;
+         minBacklight = mBrightnessMin;
+         maxBacklight = mBrightnessMax;
+-        final float valFloat = MathUtils.min(
++        float valFloat = MathUtils.min(
+                 convertGammaToLinearFloat(value, minBacklight, maxBacklight),
+                 maxBacklight);
++        if (android.os.SystemProperties.getBoolean("persist.sys.phh.linear_brightness", false)) {
++            android.util.Log.e("PHH", "Linear brightness val " + value + " from " + minBacklight + " to " + maxBacklight + " makes " + valFloat);
++            valFloat = value / 65536.0f;
++        }
++        final float finalValFloat = valFloat;
++
+         if (stopTracking) {
+             // TODO(brightnessfloat): change to use float value instead.
+             MetricsLogger.action(mContext, metric,
+@@ -393,8 +399,8 @@ public class BrightnessController implements ToggleSlider.Listener, MirroredBrig
+         if (!tracking) {
+             AsyncTask.execute(new Runnable() {
+                     public void run() {
+-                        logBrightnessChange(mDisplayId, valFloat, false);
+-                        mDisplayManager.setBrightness(mDisplayId, valFloat);
++                        logBrightnessChange(mDisplayId, finalValFloat, false);
++                        mDisplayManager.setBrightness(mDisplayId, finalValFloat);
+                     }
+                 });
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt b/packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt
+index 5ab6a267de208d6e0291e38a059caee55dead2a0..2bf377e69c3b3b738ff4f69a85573cd08ea408de 100644
+--- a/packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt
++++ b/packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt
+@@ -26,6 +26,7 @@ import android.content.Intent
+ import android.content.res.Configuration
+ import android.graphics.Insets
+ import android.os.Bundle
++import android.os.SystemProperties
+ import android.os.Trace
+ import android.os.Trace.TRACE_TAG_APP
+ import android.provider.AlarmClock
+@@ -712,7 +713,9 @@ constructor(
+     }
+ 
+     private fun updateResources() {
+-        roundedCorners = resources.getDimensionPixelSize(R.dimen.rounded_corner_content_padding)
++        roundedCorners = SystemProperties.getInt("persist.sys.phh.rounded_corners_padding", -1);
++        if(roundedCorners == -1)
++            roundedCorners = resources.getDimensionPixelSize(R.dimen.rounded_corner_content_padding)
+         val padding = resources.getDimensionPixelSize(R.dimen.qs_panel_padding)
+         header.setPadding(padding, header.paddingTop, padding, header.paddingBottom)
+         updateQQSPaddings()
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/layout/StatusBarContentInsetsProvider.kt b/packages/SystemUI/src/com/android/systemui/statusbar/layout/StatusBarContentInsetsProvider.kt
+index 6806cfdc9bdcc0b1a31bbdf20a87f9a372105744..14f9d529934916e1777fd0c703c22168d909a2bb 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/layout/StatusBarContentInsetsProvider.kt
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/layout/StatusBarContentInsetsProvider.kt
+@@ -22,6 +22,7 @@ import android.content.res.Resources
+ import android.graphics.Insets
+ import android.graphics.Point
+ import android.graphics.Rect
++import android.os.SystemProperties
+ import android.util.LruCache
+ import android.util.Pair
+ import android.view.Display.DEFAULT_DISPLAY
+@@ -331,20 +332,23 @@ constructor(
+     ): Rect {
+         val currentRotation = getExactRotation(context)
+ 
+-        val roundedCornerPadding =
+-            if (context.displayId == DEFAULT_DISPLAY || !StatusBarConnectedDisplays.isEnabled) {
+-                rotatedResources.getDimensionPixelSize(R.dimen.rounded_corner_content_padding)
+-            } else {
+-                // Currently the padding is hardcoded for each device default display, and there is
+-                // no mapping between the rounded corner radius (that you could get from
+-                // Display#getRoundedCorner) and a padding value. The proper way of doing this is
+-                // using safe insets, that take this into account already.
+-                // For now, as external displays with corner radius are extremely uncommon, we're
+-                // just returning an hardcoded small padding.
+-                rotatedResources.getDimensionPixelSize(
+-                    R.dimen.status_bar_padding_without_rounded_corners
+-                )
+-            }
++        var roundedCornerPadding = SystemProperties.getInt("persist.sys.phh.rounded_corners_padding", -1)
++        if (roundedCornerPadding == -1) {
++            roundedCornerPadding =
++                if (context.displayId == DEFAULT_DISPLAY || !StatusBarConnectedDisplays.isEnabled) {
++                    rotatedResources.getDimensionPixelSize(R.dimen.rounded_corner_content_padding)
++                } else {
++                    // Currently the padding is hardcoded for each device default display, and there is
++                    // no mapping between the rounded corner radius (that you could get from
++                    // Display#getRoundedCorner) and a padding value. The proper way of doing this is
++                    // using safe insets, that take this into account already.
++                    // For now, as external displays with corner radius are extremely uncommon, we're
++                    // just returning an hardcoded small padding.
++                    rotatedResources.getDimensionPixelSize(
++                        R.dimen.status_bar_padding_without_rounded_corners
++                    )
++                }
++        }
+         val minDotPadding =
+             if (isPrivacyDotEnabled)
+                 rotatedResources.getDimensionPixelSize(R.dimen.ongoing_appops_dot_min_padding)
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java
+index 83e5db4db6fedd165914af5283dafa31af3ce775..8e2bc1fc2227d3559c84b74c6608ef34798ff62d 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java
+@@ -27,6 +27,7 @@ import android.graphics.Color;
+ import android.graphics.Insets;
+ import android.graphics.Rect;
+ import android.graphics.drawable.Drawable;
++import android.os.SystemProperties;
+ import android.os.Trace;
+ import android.util.AttributeSet;
+ import android.util.TypedValue;
+@@ -169,7 +170,7 @@ public class KeyguardStatusBarView extends RelativeLayout {
+         // mStatusIconArea
+         mStatusIconArea.setPaddingRelative(
+                 mStatusIconArea.getPaddingStart(),
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_padding_top),
++                mStatusIconArea.getPaddingTop(),
+                 mStatusIconArea.getPaddingEnd(),
+                 mStatusIconArea.getPaddingBottom()
+         );
+@@ -221,8 +222,10 @@ public class KeyguardStatusBarView extends RelativeLayout {
+         Resources res = getResources();
+         mSystemIconsSwitcherHiddenExpandedMargin = res.getDimensionPixelSize(
+                 R.dimen.system_icons_switcher_hidden_expanded_margin);
+-        mStatusBarPaddingEnd = res.getDimensionPixelSize(
+-                R.dimen.status_bar_padding_end);
++        mStatusBarPaddingEnd = SystemProperties.getInt("persist.sys.phh.status_bar_padding_end", -1);
++        if (mStatusBarPaddingEnd == -1)
++                mStatusBarPaddingEnd = res.getDimensionPixelSize(
++                        R.dimen.status_bar_padding_end);
+         mMinDotWidth = res.getDimensionPixelSize(
+                 R.dimen.ongoing_appops_dot_min_padding);
+         mCutoutSideNudge = getResources().getDimensionPixelSize(
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java
+index fa015debd44211e943682e78b9989e340de7a503..3c8ea676f0f39a31d5b17273db31cc0165a703ce 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java
+@@ -22,6 +22,7 @@ import android.content.res.Configuration;
+ import android.graphics.Insets;
+ import android.graphics.Rect;
+ import android.graphics.Region;
++import android.os.SystemProperties;
+ import android.util.AttributeSet;
+ import android.util.Log;
+ import android.view.Display;
+@@ -332,23 +333,36 @@ public class PhoneStatusBarView extends FrameLayout {
+     }
+ 
+     private void updatePaddings() {
+-        int statusBarPaddingStart = getResources().getDimensionPixelSize(
+-                R.dimen.status_bar_padding_start);
++        int statusBarPaddingTop = SystemProperties.getInt("persist.sys.phh.status_bar_padding_top", -1);
++        if(statusBarPaddingTop == -1)
++            statusBarPaddingTop = 0;
++
++        int statusBarPaddingStart = SystemProperties.getInt("persist.sys.phh.status_bar_padding_start", -1);
++        if(statusBarPaddingStart == -1)
++            statusBarPaddingStart = getResources().getDimensionPixelSize(R.dimen.status_bar_padding_start);
++
++        int statusBarPaddingEnd = SystemProperties.getInt("persist.sys.phh.status_bar_padding_end", -1);
++        if(statusBarPaddingEnd == -1)
++            statusBarPaddingEnd = getResources().getDimensionPixelSize(R.dimen.status_bar_padding_end);
++
++        int statusBarPaddingBottom = SystemProperties.getInt("persist.sys.phh.status_bar_padding_bottom", -1);
++        if(statusBarPaddingBottom == -1)
++            statusBarPaddingBottom = getResources().getDimensionPixelSize(R.dimen.status_bar_icons_padding_bottom);
+ 
+         findViewById(R.id.status_bar_contents).setPaddingRelative(
+-                statusBarPaddingStart,
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_padding_top),
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_padding_end),
++                (int) statusBarPaddingStart,
++                (int) statusBarPaddingTop,
++                (int) statusBarPaddingEnd,
+                 0);
+ 
+         findViewById(R.id.notification_lights_out)
+                 .setPaddingRelative(0, statusBarPaddingStart, 0, 0);
+ 
+         findViewById(R.id.system_icons).setPaddingRelative(
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_icons_padding_start),
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_icons_padding_top),
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_icons_padding_end),
+-                getResources().getDimensionPixelSize(R.dimen.status_bar_icons_padding_bottom)
++                (int) statusBarPaddingStart,
++                (int) statusBarPaddingTop,
++                (int) statusBarPaddingEnd,
++                (int) statusBarPaddingBottom
+         );
+     }
+ 
+diff --git a/services/core/Android.bp b/services/core/Android.bp
+index e08be355a068b5a0db0534bbb551efa1aa909e95..6ef733eae00b2477b5abb05b6a29f2a663755aad 100644
+--- a/services/core/Android.bp
++++ b/services/core/Android.bp
+@@ -250,6 +250,19 @@ java_library_static {
+         "android.adpf.sessionmanager_aidl-java",
+         "uprobestats_flags_java_lib",
+         "clipboard_flags_lib",
++        // HIDL
++        "vendor.mediatek.hardware.mtkpower-V1.1-java",
++        "vendor.samsung.hardware.sysinput-V1.2-java",
++        "vendor.goodix.hardware.biometrics.fingerprint-V2.1-java",
++        "vendor.samsung.hardware.biometrics.fingerprint-V3.0-java",
++        "vendor.oplus.hardware.biometrics.fingerprint-V2.1-java",
++        "vendor.oppo.hardware.biometrics.fingerprint-V2.1-java",
++        "vendor.xiaomi.hardware.fingerprintextension-V1.0-java",
++
++        //AIDL
++        "vendor.samsung.hardware.sysinput-V1-java",
++        "vendor.samsung.hardware.biometrics.fingerprint-V1-java",
++        "vendor.samsung.hardware.light-V1-java",
+         "aconfig_adbdauth_flags_java_lib",
+         "AvfBuildFlags",
+     ],
+diff --git a/services/core/java/com/android/server/ConsumerIrService.java b/services/core/java/com/android/server/ConsumerIrService.java
+index 8362079b9009304eee5e5507d0a6ff9f7c4492c2..030265567da881a64221cb6f096a25fbea6b4340 100644
+--- a/services/core/java/com/android/server/ConsumerIrService.java
++++ b/services/core/java/com/android/server/ConsumerIrService.java
+@@ -59,14 +59,6 @@ public class ConsumerIrService extends IConsumerIrService.Stub {
+         mWakeLock.setReferenceCounted(true);
+ 
+         mHasNativeHal = getHalService();
+-
+-        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CONSUMER_IR)) {
+-            if (!mHasNativeHal) {
+-                throw new RuntimeException("FEATURE_CONSUMER_IR present, but no IR HAL loaded!");
+-            }
+-        } else if (mHasNativeHal) {
+-            throw new RuntimeException("IR HAL present, but FEATURE_CONSUMER_IR is not set!");
+-        }
+     }
+ 
+     @Override
+diff --git a/services/core/java/com/android/server/SystemConfig.java b/services/core/java/com/android/server/SystemConfig.java
+index 2dca73ff78647fd662de7541a2b0230fd76aaf17..58395f88ba9d82f76e1e1a1ec2fdc833ec13a471 100644
+--- a/services/core/java/com/android/server/SystemConfig.java
++++ b/services/core/java/com/android/server/SystemConfig.java
+@@ -926,6 +926,9 @@ public class SystemConfig {
+                     case "unavailable-feature":
+                         readUnavailableFeature(parser, permFile, allowFeatures, name);
+                         break;
++                    case "unavailable-feature-conditional":
++                        readUnavailableFeatureConditional(parser, permFile, allowFeatures, name);
++                        break;
+                     case "allow-in-power-save-except-idle":
+                         readAllowInPowerSaveExceptIdle(
+                                 parser, permFile, allowOverrideAppRestrictions, name);
+@@ -1265,6 +1268,27 @@ public class SystemConfig {
+         XmlUtils.skipCurrentTag(parser);
+     }
+ 
++    private void readUnavailableFeatureConditional(XmlPullParser parser, File permFile,
++            boolean allowFeatures, String name) throws IOException, XmlPullParserException {
++        if (allowFeatures) {
++            String fname = parser.getAttributeValue(null, "name");
++            String prop = parser.getAttributeValue(null, "prop");
++            if (fname == null || prop == null) {
++                Slog.w(TAG, "<" + name + "> without name in " + permFile
++                        + " at " + parser.getPositionDescription());
++            } else {
++                if(android.os.SystemProperties.getBoolean(prop, false)) {
++                    addFeature(fname, 0);
++                } else {
++                    mUnavailableFeatures.add(fname);
++                }
++            }
++        } else {
++            logNotAllowedInPartition(name, permFile, parser);
++        }
++        XmlUtils.skipCurrentTag(parser);
++    }
++
+     private void readAllowInPowerSaveExceptIdle(XmlPullParser parser, File permFile,
+             boolean allow, String name) throws IOException, XmlPullParserException {
+         if (allow) {
+diff --git a/services/core/java/com/android/server/Watchdog.java b/services/core/java/com/android/server/Watchdog.java
+index 115aaad1e1516a15dd4ef2ff184a2b439b4b8eaa..19281f25f51c82a3242799f3ae822715ca1ac31c 100644
+--- a/services/core/java/com/android/server/Watchdog.java
++++ b/services/core/java/com/android/server/Watchdog.java
+@@ -824,6 +824,8 @@ public class Watchdog implements Dumpable {
+             }
+         } catch (RemoteException e) {
+             Log.w(TAG, e);
++        } catch (java.util.NoSuchElementException e) {
++            Log.w(TAG, "HIDL service manager not available", e);
+         }
+     }
+ 
+diff --git a/services/core/java/com/android/server/am/ProcessList.java b/services/core/java/com/android/server/am/ProcessList.java
+index a421ee65fcfd8082790ce1582a9da1433ca4de75..a774a37f09055fa6713c8f70cb42b985c5351d02 100644
+--- a/services/core/java/com/android/server/am/ProcessList.java
++++ b/services/core/java/com/android/server/am/ProcessList.java
+@@ -2617,14 +2617,9 @@ public final class ProcessList implements ProcessStateController.ProcessLruUpdat
+                         // If we're not told to skip the process group creation, go create it.
+                         final int res = Process.createProcessGroup(uid, startResult.pid);
+                         if (res < 0) {
+-                            if (res == -OsConstants.ESRCH) {
+                                 Slog.e(ActivityManagerService.TAG,
+                                         "Unable to create process group for "
+                                         + app.processName + " (" + startResult.pid + ")");
+-                            } else {
+-                                throw new AssertionError("Unable to create process group for "
+-                                    + app.processName + " (" + startResult.pid + ")");
+-                            }
+                         } else {
+                             app.mProcessGroupCreated = true;
+                         }
+diff --git a/services/core/java/com/android/server/biometrics/AuthService.java b/services/core/java/com/android/server/biometrics/AuthService.java
+index 6670c21e5d38e1a845c499e14c9dbb529a6847d1..8e2fd4aaaa3a3962fd1bd7356624ef1ec663f6ab 100644
+--- a/services/core/java/com/android/server/biometrics/AuthService.java
++++ b/services/core/java/com/android/server/biometrics/AuthService.java
+@@ -44,6 +44,7 @@ import android.hardware.biometrics.IAuthService;
+ import android.hardware.biometrics.IBiometricEnabledOnKeyguardCallback;
+ import android.hardware.biometrics.IBiometricService;
+ import android.hardware.biometrics.IBiometricServiceReceiver;
++import android.hardware.biometrics.fingerprint.IFingerprint;
+ import android.hardware.biometrics.IIdentityCheckStateListener;
+ import android.hardware.biometrics.IInvalidationCallback;
+ import android.hardware.biometrics.ITestSession;
+@@ -84,6 +85,26 @@ import java.util.Arrays;
+ import java.util.List;
+ import java.util.stream.Collectors;
+ 
++import android.hardware.display.DisplayManager;
++
++import android.graphics.Point;
++import android.text.TextUtils;
++import android.util.DisplayMetrics;
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileReader;
++import java.io.PrintWriter;
++
++import android.os.FileObserver;
++import android.os.Build;
++
++import vendor.samsung.hardware.biometrics.fingerprint.V3_0.ISehBiometricsFingerprint;
++import vendor.goodix.hardware.biometrics.fingerprint.V2_1.IGoodixFingerprintDaemon;
++import vendor.samsung.hardware.sysinput.V1_0.ISehSysInputDev;
++import vendor.samsung.hardware.biometrics.fingerprint.ISehFingerprint;
++
++import vendor.xiaomi.hardware.fingerprintextension.V1_0.IXiaomiFingerprint;
++
+ /**
+  * System service that provides an interface for authenticating with biometrics and
+  * PIN/pattern/password to BiometricPrompt and lock screen.
+@@ -102,6 +123,13 @@ public class AuthService extends SystemService {
+     @VisibleForTesting
+     final IAuthService.Stub mImpl;
+ 
++    private FileObserver fodFileObserver = null;
++    private static ISehBiometricsFingerprint mSamsungFingerprint = null;
++    private ISehFingerprint mSamsungFingerprintAidl = null;
++    private vendor.samsung.hardware.sysinput.ISehSysInputDev mSamsungSysinputAidl = null;
++
++    private IXiaomiFingerprint mXiaomiFingerprint = null;
++
+     /**
+      * Class for injecting dependencies into AuthService.
+      * TODO(b/141025588): Replace with a dependency injection framework (e.g. Guice, Dagger).
+@@ -845,6 +873,101 @@ public class AuthService extends SystemService {
+      *                 └── for (s : p.sensors)
+      *                     └── BiometricService.registerAuthenticator(s)
+      */
++
++    private static void samsungSysinputCommand(String arg) {
++        try {
++            android.util.Log.e("PHH-Enroll", "SysinputCommand " + arg);
++            var name = "default";
++            var fqName = vendor.samsung.hardware.sysinput.ISehSysInputDev.DESCRIPTOR + "/" + name;
++            var b = android.os.Binder.allowBlocking(android.os.ServiceManager.waitForDeclaredService(fqName));
++            var samsungSysinputAidl = vendor.samsung.hardware.sysinput.ISehSysInputDev.Stub.asInterface(b);
++            Thread.sleep(100);
++            samsungSysinputAidl.setProperty(1 /*DEFAULT_TSP*/, 18, arg);
++            android.util.Log.e("PHH-Enroll", "Done SysinputCommand");
++        } catch(Throwable t) {
++            android.util.Log.e("PHH-Enroll", "SysinputCommand", t);
++        }
++    }
++
++    private void refreshVendorServices() {
++        try {
++            mSamsungFingerprint = ISehBiometricsFingerprint.getService();
++            android.util.Log.e("PHH", "Got samsung fingerprint HAL");
++        } catch(Exception e) {
++            if (e instanceof java.util.NoSuchElementException) {
++                android.util.Log.e("PHH", "Failed getting Samsung fingerprint HAL, doesn't exist");
++            } else {
++                android.util.Log.e("PHH", "Failed getting Samsung fingerprint HAL", e);
++            }
++        }
++
++        try {
++            final String name = "default";
++            final String fqName = IFingerprint.DESCRIPTOR + "/" + name;
++            final IBinder fpBinder = Binder.allowBlocking(ServiceManager.waitForDeclaredService(fqName));
++            //final IFingerprint fp = IFingerprint.Stub.asInterface(fpBinder);
++            mSamsungFingerprintAidl = ISehFingerprint.Stub.asInterface(fpBinder.getExtension());
++        } catch(Exception e) {
++            android.util.Log.e("PHH", "Failed getting Samsung fingerprint AIDL HAL", e);
++        }
++
++        try {
++            final String name = "default";
++            final String fqName = vendor.samsung.hardware.sysinput.ISehSysInputDev.DESCRIPTOR + "/" + name;
++            final IBinder b = Binder.allowBlocking(ServiceManager.waitForDeclaredService(fqName));
++            mSamsungSysinputAidl = vendor.samsung.hardware.sysinput.ISehSysInputDev.Stub.asInterface(b);
++            mSamsungSysinputAidl.registerCallback(new vendor.samsung.hardware.sysinput.ISehSysInputCallback.Stub() {
++                @Override
++                public void onReportInformation(int type, String data) {
++                    android.util.Log.e("PHH", "Received Sysinput Report Information " +type + ", " + data);
++                }
++                @Override
++                public void onReportRawData(int type, int count, int[] data) {
++                    android.util.Log.e("PHH", "Received Sysinput Report RawData " + type + ", " + count);
++                }
++
++                @Override
++                public int getInterfaceVersion() {
++                    return this.VERSION;
++                }
++
++                @Override
++                public String getInterfaceHash() {
++                    return this.HASH;
++                }
++            });
++            String res;
++            res = mSamsungSysinputAidl.getProperty(1, 1);
++            Thread.sleep(100);
++            android.util.Log.e("PHH", "Got Samsung sysinput aidl feature " + res);
++            res = mSamsungSysinputAidl.getProperty(1, 2);
++            Thread.sleep(100);
++            android.util.Log.e("PHH", "Got Samsung sysinput aidl cmd_list " + res);
++            res = mSamsungSysinputAidl.getProperty(1, 3);
++            Thread.sleep(100);
++            android.util.Log.e("PHH", "Got Samsung sysinput aidl scrub_pos " + res);
++            res = mSamsungSysinputAidl.getProperty(1, 4);
++            Thread.sleep(100);
++            android.util.Log.e("PHH", "Got Samsung sysinput aidl fod_info " + res);
++            res = mSamsungSysinputAidl.getProperty(1, 5);
++            Thread.sleep(100);
++            android.util.Log.e("PHH", "Got Samsung sysinput aidl fod_pos " + res);
++        } catch(Exception e) {
++            android.util.Log.e("PHH", "Failed getting Samsung fingerprint AIDL HAL", e);
++        }
++
++        try {
++            mXiaomiFingerprint = IXiaomiFingerprint.getService();
++            android.util.Log.e("PHH", "Got xiaomi fingerprint HAL");
++        } catch(Exception e) {
++            if (e instanceof java.util.NoSuchElementException) {
++                android.util.Log.e("PHH", "Failed getting xiaomi fingerprint HAL, doesn't exist");
++            } else {
++                android.util.Log.e("PHH", "Failed getting xiaomi fingerprint HAL", e);
++            }
++        }
++    }
++
+     @Override
+     public void onStart() {
+         mBiometricService = mInjector.getBiometricService();
+@@ -854,11 +977,11 @@ public class AuthService extends SystemService {
+             final int firstApiLevel = SystemProperties.getInt(SYSPROP_FIRST_API_LEVEL, 0);
+             final int apiLevel = SystemProperties.getInt(SYSPROP_API_LEVEL, firstApiLevel);
+             String[] configStrings = mInjector.getConfiguration(getContext());
+-            if (configStrings.length == 0 && apiLevel == Build.VERSION_CODES.R) {
++            if (configStrings.length == 0) {
+                 // For backwards compatibility with R where biometrics could work without being
+                 // configured in config_biometric_sensors. In the absence of a vendor provided
+                 // configuration, we assume the weakest biometric strength (i.e. convenience).
+-                Slog.w(TAG, "Found R vendor partition without config_biometric_sensors");
++                Slog.w(TAG, "Found vendor partition without config_biometric_sensors");
+                 configStrings = generateRSdkCompatibleConfiguration();
+             }
+             hidlConfigs = new SensorConfig[configStrings.length];
+@@ -871,13 +994,113 @@ public class AuthService extends SystemService {
+ 
+         registerAuthenticators();
+         mInjector.publishBinderService(this, mImpl);
++        refreshVendorServices();
++        //samsungSysinputCommand("fod_icon_visible,1");
++        if(samsungHasCmd("fod_enable") && (mSamsungFingerprint != null || mSamsungFingerprintAidl != null)) {
++            samsungCmd("fod_enable,1,1,0");
++            String actualMaskBrightnessPath = "/sys/class/lcd/panel/actual_mask_brightness";
++            android.util.Log.e("PHH-Enroll", "Reading actual brightness file gives " + readFile(actualMaskBrightnessPath));
++            fodFileObserver = new FileObserver(actualMaskBrightnessPath, FileObserver.MODIFY) {
++                @Override
++                public void onEvent(int event, String path) {
++                    String actualMask = readFile(actualMaskBrightnessPath);
++                    refreshVendorServices();
++                    Slog.d("PHH-Enroll", "New actual mask brightness is " + actualMask);
++                    try {
++                        int eventReq = 0;
++                        if("0".equals(actualMask)) {
++                            eventReq = 1; //released
++                        } else {
++                            eventReq = 2; //pressed
++                        }
++                        if(mSamsungFingerprint != null) {
++                            mSamsungFingerprint.sehRequest(22 /* SEM_FINGER_STATE */, eventReq, new java.util.ArrayList<Byte>(),
++                                    (int retval, java.util.ArrayList<Byte> out) -> {} );
++                        }
++                    } catch(Exception e) {
++                        Slog.d("PHH-Enroll", "Failed setting samsung event for mask observer", e);
++                    }
++                }
++            };
++            fodFileObserver.startWatching();
++        }
++
++        String asusGhbmOnAchieved = "/sys/class/drm/ghbm_on_achieved";
++        if( (new File(asusGhbmOnAchieved)).exists()) {
++            fodFileObserver = new FileObserver(asusGhbmOnAchieved, FileObserver.MODIFY) {
++                boolean wasOn = false;
++                @Override
++                public void onEvent(int event, String path) {
++                    String spotOn = readFile(asusGhbmOnAchieved);
++                    if("1".equals(spotOn)) {
++                        if(!wasOn) {
++                            try {
++                                IGoodixFingerprintDaemon goodixDaemon = IGoodixFingerprintDaemon.getService();
++
++                                //Send UI ready
++                                goodixDaemon.sendCommand(200002, new java.util.ArrayList<Byte>(), (returnCode, resultData) -> {
++                                    Slog.e(TAG, "Goodix send command touch pressed returned code "+ returnCode);
++                                });
++                            } catch(Throwable t) {
++                                Slog.d("PHH-Enroll", "Failed sending goodix command", t);
++                            }
++                        }
++                        wasOn = true;
++                    } else {
++                        wasOn = false;
++                    }
++                }
++            };
++            fodFileObserver.startWatching();
++        }
++
++        String xiaomiFodPressedStatusPath = "/sys/class/touch/touch_dev/fod_press_status";
++        if(new File(xiaomiFodPressedStatusPath).exists() && mXiaomiFingerprint != null) {
++            fodFileObserver = new FileObserver(xiaomiFodPressedStatusPath, FileObserver.MODIFY) {
++                @Override
++                public void onEvent(int event, String path) {
++                    String isFodPressed = readFile(xiaomiFodPressedStatusPath);
++                    Slog.d("PHH-Enroll", "Fod pressed status: " + isFodPressed);
++                    Slog.d("PHH-Enroll", "Within xiaomi scenario for FOD");
++
++                    try {
++                    if("0".equals(isFodPressed)) {
++                        Slog.d("PHH-Enroll", "Fod un-pressed!");
++                        mXiaomiFingerprint.extCmd(android.os.SystemProperties.getInt("phh.xiaomi.fod.enrollment.id", 4), 0);
++                    } else if("1".equals(isFodPressed)) {
++                        Slog.d("PHH-Enroll", "Fod pressed!");
++                        mXiaomiFingerprint.extCmd(android.os.SystemProperties.getInt("phh.xiaomi.fod.enrollment.id", 4), 1);
++                    }
++                    } catch(Exception e) {
++                        Slog.d("PHH-Enroll", "Failed Xiaomi async extcmd", e);
++                    }
++                }
++            };
++            fodFileObserver.startWatching();
++        }
+     }
+ 
+     private void registerAuthenticators() {
+         BiometricHandlerProvider handlerProvider = mInjector.getBiometricHandlerProvider();
+ 
++        String[] configStrings = mInjector.getFingerprintConfiguration(getContext());
++        if (configStrings == null || configStrings.length == 0) {
++            Slog.i("PHH", "Attempting to generate config_biometric_sensors for fingerprint");
++            final int firstApiLevel = SystemProperties.getInt(SYSPROP_FIRST_API_LEVEL, 0);
++            final int apiLevel = SystemProperties.getInt(SYSPROP_API_LEVEL, firstApiLevel);
++            configStrings = mInjector.getConfiguration(getContext());
++            if (configStrings.length == 0) {
++                // For backwards compatibility with R where biometrics could work without being
++                // configured in config_biometric_sensors. In the absence of a vendor provided
++                // configuration, we assume the weakest biometric strength (i.e. convenience).
++                Slog.w(TAG, "Found vendor partition without config_biometric_sensors");
++                configStrings = generateRSdkCompatibleConfiguration();
++            }
++        }
++        Slog.i("PHH", "config_biometric_sensors for fingerprint " + configStrings);
++
+         registerFingerprintSensors(mInjector.getFingerprintAidlInstances(),
+-                mInjector.getFingerprintConfiguration(getContext()), getContext(),
++                configStrings, getContext(),
+                 mInjector.getFingerprintService(), handlerProvider);
+         registerFaceSensors(mInjector.getFaceAidlInstances(),
+                 mInjector.getFaceConfiguration(getContext()), getContext(),
+@@ -1000,17 +1223,30 @@ public class AuthService extends SystemService {
+             return;
+         }
+ 
+-        handlerProvider.getFingerprintHandler().post(() -> {
+-            final FingerprintSensorConfigurations mFingerprintSensorConfigurations =
+-                    new FingerprintSensorConfigurations(!(hidlConfigStrings != null
+-                            && hidlConfigStrings.length > 0));
++        final boolean preferHidlSensor;
++        if (!SystemProperties.getBoolean("persist.sys.phh.virtual_sensors_are_real", false)) {
++            if (hidlConfigStrings != null && hidlConfigStrings.length > 0
++                    && fingerprintAidlInstances != null && fingerprintAidlInstances.length == 1
++                    && fingerprintAidlInstances[0].contains("virtual")) {
+ 
+-            if (hidlConfigStrings != null && hidlConfigStrings.length > 0) {
+-                mFingerprintSensorConfigurations.addHidlSensors(hidlConfigStrings, context);
++                Slog.w(TAG, "Preferring HIDL fingerprint sensor over virtual AIDL sensor");
++                preferHidlSensor = true;
++            } else {
++                preferHidlSensor = false;
+             }
++        } else {
++            preferHidlSensor = false;
++        }
++
++        handlerProvider.getFingerprintHandler().post(() -> {
++            final FingerprintSensorConfigurations mFingerprintSensorConfigurations =
++                    new FingerprintSensorConfigurations(fingerprintAidlInstances != null
++                            && fingerprintAidlInstances.length > 0 && !preferHidlSensor);
+ 
+-            if (fingerprintAidlInstances != null && fingerprintAidlInstances.length > 0) {
++            if (fingerprintAidlInstances != null && fingerprintAidlInstances.length > 0 && !preferHidlSensor) {
+                 mFingerprintSensorConfigurations.addAidlSensors(fingerprintAidlInstances);
++            } else if (hidlConfigStrings != null && hidlConfigStrings.length > 0) {
++                mFingerprintSensorConfigurations.addHidlSensors(hidlConfigStrings, context);
+             }
+ 
+             if (fingerprintService != null) {
+@@ -1039,7 +1275,7 @@ public class AuthService extends SystemService {
+         if (pm.hasSystemFeature(PackageManager.FEATURE_FACE)) {
+             modalities.add(String.valueOf(BiometricAuthenticator.TYPE_FACE));
+         }
+-        final String strength = String.valueOf(Authenticators.BIOMETRIC_CONVENIENCE);
++        final String strength = String.valueOf(Authenticators.BIOMETRIC_STRONG);
+         final String[] configStrings = new String[modalities.size()];
+         for (int i = 0; i < modalities.size(); ++i) {
+             final String id = String.valueOf(i);
+@@ -1083,10 +1319,22 @@ public class AuthService extends SystemService {
+     private FingerprintSensorPropertiesInternal getHidlFingerprintSensorProps(int sensorId,
+             @BiometricManager.Authenticators.Types int strength) {
+         // The existence of config_udfps_sensor_props indicates that the sensor is UDFPS.
+-        final int[] udfpsProps = getContext().getResources().getIntArray(
++        int[] udfpsProps = getContext().getResources().getIntArray(
+                 com.android.internal.R.array.config_udfps_sensor_props);
+ 
+-        final boolean isUdfps = !ArrayUtils.isEmpty(udfpsProps);
++        boolean isUdfps = !ArrayUtils.isEmpty(udfpsProps);
++        if(!isUdfps) {
++            try {
++                udfpsProps = dynamicUdfpsProps(getContext());
++            } catch(Throwable t) {
++                Slog.e("PHH-Enroll", "Failed generating UDFPS props");
++            }
++        }
++        isUdfps = !ArrayUtils.isEmpty(udfpsProps);
++
++        if(udfpsProps.length > 0) {
++            Slog.d("PHH-Enroll", "Got udfps infos " + udfpsProps[0] + ", " + udfpsProps[1] + ", " + udfpsProps[2]);
++        }
+ 
+         // config_is_powerbutton_fps indicates whether device has a power button fingerprint sensor.
+         final boolean isPowerbuttonFps = getContext().getResources().getBoolean(
+@@ -1149,4 +1397,192 @@ public class AuthService extends SystemService {
+                 componentInfo, resetLockoutRequiresHardwareAuthToken,
+                 resetLockoutRequiresChallenge);
+     }
++
++    static public int[] dynamicUdfpsProps(Context ctxt) {
++        DisplayManager mDM = (DisplayManager) ctxt.getSystemService(Context.DISPLAY_SERVICE);
++        Point displayRealSize = new Point();
++        DisplayMetrics displayMetrics = new DisplayMetrics();
++        mDM.getDisplay(0).getRealSize(displayRealSize);
++        mDM.getDisplay(0).getMetrics(displayMetrics);
++
++        if(readFile("/sys/class/fingerprint/fingerprint/position") != null) {
++            try {
++            ISehSysInputDev s = ISehSysInputDev.getService();
++            s.getTspFodInformation(0, (a, b) -> {
++                Slog.d("PHH-Enroll", "TspFod info " + a + ", " + b);
++            });
++            s.getTspFodPosition(0, (a, b) -> {
++                Slog.d("PHH-Enroll", "TspFod info " + a + ", " + b);
++            });
++            }catch(Throwable t) {
++                Slog.d("PHH-Enroll", "heya ", t);
++            }
++
++
++            android.util.Log.d("PHH", "Samsung fingerprint");
++            String[] fodPositionArray = readFile("/sys/class/fingerprint/fingerprint/position").split(",");
++            float bottomMM = Float.parseFloat(fodPositionArray[0]);
++            float areaSizeMM = Float.parseFloat(fodPositionArray[5]);
++            float heightMM = Float.parseFloat(fodPositionArray[2]);
++            float bottomInch = bottomMM * 0.0393700787f;
++            float areaSizeInch = areaSizeMM * 0.0393700787f;
++            float heightInch = heightMM * 0.0393700787f;
++            int bottomPx = (int)(bottomInch * displayMetrics.ydpi);
++            int areaSizePx = (int)(areaSizeInch * displayMetrics.ydpi);
++            int midDistPx = (int)(areaSizeInch * displayMetrics.ydpi / 2.0f);
++
++            float mW = areaSizePx/2;
++            float mH = areaSizePx/2;
++            float mX = displayRealSize.x/2;
++            //float mY = displayRealSize.y - bottomPx - midDistPx;
++            float mY = displayRealSize.y - (bottomInch * displayMetrics.ydpi) - (areaSizeInch * displayMetrics.ydpi / 2.0f);
++
++            samsungCmd(String.format("fod_rect,%d,%d,%d,%d", (int)(mX - mW/2), (int)(mY - mW/2), (int)(mX + mW/2), (int)(mY + mW/2)));
++            Slog.d("PHH-Enroll", "Display real size is " + displayRealSize.y + ", dpy " + displayMetrics.ydpi);
++
++            int udfpsProps[] = new int[3];
++            udfpsProps[0] = (int)mX;
++            udfpsProps[1] = (int)mY;
++            udfpsProps[2] = (int)mW;
++
++            try {
++                ISehBiometricsFingerprint samsungFingerprint = null;
++                samsungFingerprint = ISehBiometricsFingerprint.getService();
++                Slog.d("PHH-Enroll", "Samsung ask for sensor status");
++                samsungFingerprint.sehRequest(6, 0, new java.util.ArrayList(), (int retval, java.util.ArrayList<Byte> out) -> {
++                    Slog.d("PHH-Enroll", "Result is " + retval);
++                    for(int i=0; i<out.size(); i++) {
++                        Slog.d("PHH-Enroll", "\t" + i + ":" + out.get(i));
++                    }
++                } );
++                Slog.d("PHH-Enroll", "Samsung ask for sensor brightness value");
++                samsungFingerprint.sehRequest(32, 0, new java.util.ArrayList(), (int retval, java.util.ArrayList<Byte> out) -> {
++                    Slog.d("PHH-Enroll", "Result is " + retval);
++                    for(int i=0; i<out.size(); i++) {
++                        Slog.d("PHH-Enroll", "\t" + i + ":" + out.get(i));
++                    }
++                } );
++
++            } catch(Exception e) {
++                if (e instanceof java.util.NoSuchElementException) {
++                    Slog.d("PHH-Enroll", "Failed setting samsung3.0 fingerprint recognition, doesn't exist");
++                } else {
++                    Slog.d("PHH-Enroll", "Failed setting samsung3.0 fingerprint recognition", e);
++                }
++            }
++
++            try {
++                final String name = "default";
++                final String fqName = IFingerprint.DESCRIPTOR + "/" + name;
++                final IBinder fpBinder = Binder.allowBlocking(ServiceManager.waitForDeclaredService(fqName));
++                final IFingerprint fp = IFingerprint.Stub.asInterface(fpBinder);
++                final ISehFingerprint fpaidl = ISehFingerprint.Stub.asInterface(fpBinder.getExtension());
++
++                Slog.d("PHH-Enroll", "Samsung ask for sensor status");
++                vendor.samsung.hardware.biometrics.fingerprint.SehResult sehres = fpaidl.sehRequest(0, 6, 0, new byte[0]);
++
++                Slog.d("PHH-Enroll", "Result is " + sehres.retValue);
++                for(int i=0; i<sehres.data.length; i++) {
++                    Slog.d("PHH-Enroll", "\t" + i + ":" + sehres.data[i]);
++                }
++
++                Slog.d("PHH-Enroll", "Samsung ask for sensor brightness value");
++                sehres = fpaidl.sehRequest(0, 32, 0, new byte[0]);
++
++                Slog.d("PHH-Enroll", "Result is " + sehres.retValue);
++                for(int i=0; i<sehres.data.length; i++) {
++                    Slog.d("PHH-Enroll", "\t" + i + ":" + sehres.data[i]);
++                }
++            } catch(Exception e) {
++                Slog.d("PHH-Enroll", "Failed setting samsung3.0 fingerprint recognition", e);
++            }
++            return udfpsProps;
++        }
++
++        if(android.os.SystemProperties.get("ro.vendor.build.fingerprint").contains("ASUS_I006D")) {
++            int udfpsProps[] = new int[3];
++            udfpsProps[0] = displayRealSize.x/2;
++            udfpsProps[1] = 1741;
++            udfpsProps[2] = 110;
++            return udfpsProps;
++        }
++
++       String fpLocation = android.os.SystemProperties.get("persist.vendor.sys.fp.fod.location.X_Y");
++       if(!TextUtils.isEmpty(fpLocation) && fpLocation.contains(",")) {
++            int[] udfpsProps = new int[3];
++            String[] coordinates = fpLocation.split(",");
++            udfpsProps[0] = displayRealSize.x/2;
++            udfpsProps[1] = Integer.parseInt(coordinates[1]) + 100;
++
++            String[] widthHeight = android.os.SystemProperties.get("persist.vendor.sys.fp.fod.size.width_height").split(",");
++
++            udfpsProps[2] = (Integer.parseInt(widthHeight[0]) /2);
++            return udfpsProps;
++        }
++
++        return new int[0];
++    }
++
++    private static boolean samsungHasCmd(String cmd) {
++        try {
++            File f = new File("/sys/devices/virtual/sec/tsp/cmd_list");
++            if(!f.exists()) return false;
++
++            android.util.Log.d("PHH", "Managed to grab cmd list, checking...");
++            BufferedReader b = new BufferedReader(new FileReader(f));
++            String line = null;
++            while( (line = b.readLine()) != null) {
++                if(line.equals(cmd)) return true;
++            }
++            android.util.Log.d("PHH", "... nope");
++            return false;
++        } catch(Exception e) {
++            android.util.Log.d("PHH", "Failed reading cmd_list", e);
++            return false;
++        }
++    }
++
++    public static void samsungCmd(String cmd) {
++        try {
++            writeFile("/sys/devices/virtual/sec/tsp/cmd", cmd);
++
++            String status = readFile("/sys/devices/virtual/sec/tsp/cmd_status");
++            String ret = readFile("/sys/devices/virtual/sec/tsp/cmd_result");
++
++            android.util.Log.d("PHH", "Sending command " + cmd + " returned " + ret + ":" + status);
++        } catch(Exception e) {
++            android.util.Log.d("PHH", "Failed sending command " + cmd, e);
++        }
++    }
++
++    private static void writeFile(String path, String value) {
++        try {
++            PrintWriter writer = new PrintWriter(path, "UTF-8");
++            writer.println(value);
++            writer.close();
++        } catch(Exception e) {
++            android.util.Log.d("PHH", "Failed writing to " + path + ": " + value);
++        }
++    }
++
++    private static void writeFile(File file, String value) {
++        try {
++            PrintWriter writer = new PrintWriter(file, "UTF-8");
++            writer.println(value);
++            writer.close();
++        } catch(Exception e) {
++            android.util.Log.d("PHH", "Failed writing to " + file + ": " + value);
++        }
++    }
++
++    private static String readFile(String path) {
++        try {
++            File f = new File(path);
++
++            BufferedReader b = new BufferedReader(new FileReader(f));
++            return b.readLine();
++        } catch(Exception e) {
++            return null;
++        }
++    }
+ }
+diff --git a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+index 51ca147fc5320247d94cdef313660904fb46f762..b4430355a0e21e1f94454fd9fbe509a297adf1a1 100644
+--- a/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
++++ b/services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java
+@@ -36,6 +36,7 @@ import android.hardware.biometrics.SensorLocationInternal;
+ import android.hardware.biometrics.fingerprint.IFingerprint;
+ import android.hardware.biometrics.fingerprint.PointerContext;
+ import android.hardware.biometrics.fingerprint.SensorProps;
++import android.hardware.biometrics.fingerprint.SensorLocation;
+ import android.hardware.biometrics.fingerprint.virtualhal.IVirtualHal;
+ import android.hardware.fingerprint.Fingerprint;
+ import android.hardware.fingerprint.FingerprintAuthenticateOptions;
+@@ -243,6 +244,7 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+             Slog.d(getTag(), "Adding AIDL configs");
+             final List<SensorLocationInternal> workaroundLocations =
+                     getWorkaroundSensorProps(mContext);
++            android.util.Log.e("PHH-Enroll", "Poping AIDL fp provider");
+             for (SensorProps prop : props) {
+                 addAidlSensors(prop, gestureAvailabilityDispatcher, workaroundLocations,
+                         resetLockoutRequiresHardwareAuthToken);
+@@ -276,6 +278,31 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+             @NonNull List<SensorLocationInternal> workaroundLocations,
+             boolean resetLockoutRequiresHardwareAuthToken) {
+         final int sensorId = prop.commonProps.sensorId;
++
++        android.util.Log.e("PHH-Enroll", "Got fp props -- pre");
++        for(SensorLocation loc: prop.sensorLocations) {
++            android.util.Log.e("PHH-Enroll", " - " + loc.sensorLocationX + ", " + loc.sensorLocationY + ", " +loc.sensorRadius + ", disp =" + loc.display + ", shape " + loc.sensorShape);
++        }
++        if (prop.sensorLocations.length == 1 && prop.sensorLocations[0].sensorLocationX == 0) {
++            try {
++                int[] otherValues = com.android.server.biometrics.AuthService.dynamicUdfpsProps(mContext);
++                if (otherValues.length > 0) {
++                    SensorLocation loc = new SensorLocation();
++                    loc.sensorLocationX = otherValues[0];
++                    loc.sensorLocationY = otherValues[1];
++                    loc.sensorRadius = otherValues[2];
++                    prop.sensorLocations[0] = loc;
++                }
++            } catch(Throwable t) {
++                android.util.Log.e("PHH-Enroll", "FingerprintProvider dynamicUdfpsProps", t);
++            }
++        }
++
++        android.util.Log.e("PHH-Enroll", "Got fp props -- post");
++        for(SensorLocation loc: prop.sensorLocations) {
++            android.util.Log.e("PHH-Enroll", " - " + loc.sensorLocationX + ", " + loc.sensorLocationY + ", " +loc.sensorRadius + ", disp =" + loc.display + ", shape " + loc.sensorShape);
++        }
++
+         final Sensor sensor = new Sensor(this, mContext, mHandler, prop, mBiometricContext,
+                 workaroundLocations, resetLockoutRequiresHardwareAuthToken);
+         sensor.init(gestureAvailabilityDispatcher, mLockoutResetDispatcher);
+@@ -684,7 +711,8 @@ public class FingerprintProvider implements IBinder.DeathRecipient, ServiceProvi
+     @Override
+     public void scheduleInternalCleanup(int sensorId, int userId,
+             @Nullable ClientMonitorCallback callback, boolean favorHalEnrollments) {
+-        if (!mCleanup) {
++        final boolean mNocleanup = android.os.SystemProperties.getBoolean("persist.sys.phh.fingerprint.nocleanup", false);
++        if (!mCleanup || mNocleanup) {
+             return;
+         }
+         mHandler.post(() -> {
+diff --git a/services/core/java/com/android/server/display/DisplayDeviceConfig.java b/services/core/java/com/android/server/display/DisplayDeviceConfig.java
+index 4fee6d3c4ad274923b91f32521f47f720289f70c..5f92c98b5e098f463635fdf0cc59b95de45df7c4 100644
+--- a/services/core/java/com/android/server/display/DisplayDeviceConfig.java
++++ b/services/core/java/com/android/server/display/DisplayDeviceConfig.java
+@@ -969,9 +969,14 @@ public class DisplayDeviceConfig {
+      */
+     public static DisplayDeviceConfig create(Context context, boolean useConfigXml,
+             DisplayManagerFlags flags) {
+-        final DisplayDeviceConfig config;
++        DisplayDeviceConfig config;
+         if (useConfigXml) {
+-            config = getConfigFromGlobalXml(context, flags);
++            try {
++                config = getConfigFromGlobalXml(context, flags);
++            } catch(Exception e) {
++                android.util.Log.e("PHH", "Failed parsing automatic brightness values, fallbacking", e);
++                config = getConfigFromPmValues(context, flags);
++            }
+         } else {
+             config = getConfigFromPmValues(context, flags);
+         }
+@@ -2088,37 +2093,43 @@ public class DisplayDeviceConfig {
+             return;
+         }
+ 
+-        // Use the (preferred) display device config mapping
+-        final List<Point> points = map.getPoint();
+-        final int size = points.size();
+-
+-        float[] nits = new float[size];
+-        float[] backlight = new float[size];
+-
+-        mInterpolationType = convertInterpolationType(map.getInterpolation());
+-        int i = 0;
+-        for (Point point : points) {
+-            nits[i] = point.getNits().floatValue();
+-            backlight[i] = point.getValue().floatValue();
+-            if (i > 0) {
+-                if (nits[i] < nits[i - 1]) {
+-                    Slog.e(TAG, "screenBrightnessMap must be non-decreasing, ignoring rest "
+-                            + " of configuration. Nits: " + nits[i] + " < " + nits[i - 1]);
+-                    return;
+-                }
++        try {
++            // Use the (preferred) display device config mapping
++            final List<Point> points = map.getPoint();
++            final int size = points.size();
++
++            float[] nits = new float[size];
++            float[] backlight = new float[size];
++
++            mInterpolationType = convertInterpolationType(map.getInterpolation());
++            int i = 0;
++            for (Point point : points) {
++                nits[i] = point.getNits().floatValue();
++                backlight[i] = point.getValue().floatValue();
++                if (i > 0) {
++                    if (nits[i] < nits[i - 1]) {
++                        Slog.e(TAG, "screenBrightnessMap must be non-decreasing, ignoring rest "
++                                + " of configuration. Nits: " + nits[i] + " < " + nits[i - 1]);
++                        return;
++                    }
+ 
+-                if (backlight[i] < backlight[i - 1]) {
+-                    Slog.e(TAG, "screenBrightnessMap must be non-decreasing, ignoring rest "
+-                            + " of configuration. Value: " + backlight[i] + " < "
+-                            + backlight[i - 1]);
+-                    return;
++                    if (backlight[i] < backlight[i - 1]) {
++                        Slog.e(TAG, "screenBrightnessMap must be non-decreasing, ignoring rest "
++                                + " of configuration. Value: " + backlight[i] + " < "
++                                + backlight[i - 1]);
++                        return;
++                    }
+                 }
++                ++i;
+             }
+-            ++i;
++            mRawNits = nits;
++            mRawBacklight = backlight;
++            constrainNitsAndBacklightArrays();
++        } catch(Throwable t) {
++            mRawNits = null;
++            mRawBacklight = null;
++            setSimpleMappingStrategyValues();
+         }
+-        mRawNits = nits;
+-        mRawBacklight = backlight;
+-        constrainNitsAndBacklightArrays();
+     }
+ 
+     private void loadThermalThrottlingConfig(DisplayConfiguration config) {
+diff --git a/services/core/java/com/android/server/display/DisplayPowerController.java b/services/core/java/com/android/server/display/DisplayPowerController.java
+index e1f13b9f74173fb5c6d6697ae875b9f29f2826b3..bc99da745f11adb2db4c10acd75b15de06aa9dd8 100644
+--- a/services/core/java/com/android/server/display/DisplayPowerController.java
++++ b/services/core/java/com/android/server/display/DisplayPowerController.java
+@@ -1379,6 +1379,11 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
+         final DisplayState displayState = mDisplayStateController.updateDisplayState(
+                 mPowerRequest, mIsEnabled, mIsInTransition);
+         int state = displayState.state();
++        boolean disableDisplayDozeSuspend = SystemProperties.get("persist.sys.phh.disable_display_doze_suspend", "0").equals("1");
++
++        if (disableDisplayDozeSuspend && state == Display.STATE_DOZE_SUSPEND) {
++            state = Display.STATE_DOZE;
++        }
+ 
+         // Initialize things the first time the power state is changed.
+         if (mustInitialize) {
+diff --git a/services/core/java/com/android/server/display/DisplayPowerProximityStateController.java b/services/core/java/com/android/server/display/DisplayPowerProximityStateController.java
+index 35455c841c7bebbf11350ac8ff394a61f9a77330..d9e5adddefd384d47d91925011f662be9d29adaf 100644
+--- a/services/core/java/com/android/server/display/DisplayPowerProximityStateController.java
++++ b/services/core/java/com/android/server/display/DisplayPowerProximityStateController.java
+@@ -92,6 +92,20 @@ public final class DisplayPowerProximityStateController {
+         public void onSensorChanged(SensorEvent event) {
+             if (mProximitySensorEnabled) {
+                 final long time = mClock.uptimeMillis();
++                if("com.samsung.sensor.touch_proximity".equals(mProximitySensor.getStringType())) {
++                    int v = (int)event.values[0];
++                    boolean positive = (v <= 4);
++                    android.util.Log.d("PHH", "Samsung sensor changed " + positive + ":" + v);
++                    handleProximitySensorEvent(time, positive);
++                    return;
++                }
++                if("com.samsung.sensor.hover_proximity".equals(mProximitySensor.getStringType())) {
++                    float v = event.values[0];
++                    boolean positive = (v >= 0.5f && v <= 4.5);
++                    android.util.Log.d("PHH", "Samsung hover sensor changed " + positive + ":" + v);
++                    handleProximitySensorEvent(time, positive);
++                    return;
++                }
+                 final float distance = event.values[0];
+                 boolean positive = distance >= 0.0f && distance < mProximityThreshold;
+                 handleProximitySensorEvent(time, positive);
+@@ -380,9 +394,33 @@ public final class DisplayPowerProximityStateController {
+         }
+         mProximitySensor = SensorUtils.findSensor(mSensorManager,
+                 mDisplayDeviceConfig.getProximitySensor(), Sensor.TYPE_PROXIMITY);
++        if(mProximitySensor == null) {
++            java.util.List<Sensor> sensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
++            for(Sensor sensor: sensors) {
++                if("com.samsung.sensor.physical_proximity".equals(sensor.getStringType()))
++                    mProximitySensor = sensor;
++            }
++        }
++        if(mProximitySensor == null) {
++            java.util.List<Sensor> sensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
++            for(Sensor sensor: sensors) {
++                if("com.samsung.sensor.hover_proximity".equals(sensor.getStringType()))
++                    mProximitySensor = sensor;
++            }
++        }
++        if(mProximitySensor == null) {
++            java.util.List<Sensor> sensors = mSensorManager.getSensorList(Sensor.TYPE_ALL);
++            for(Sensor sensor: sensors) {
++                if("com.samsung.sensor.touch_proximity".equals(sensor.getStringType()))
++                    mProximitySensor = sensor;
++            }
++        }
+         if (mProximitySensor != null) {
+             mProximityThreshold = Math.min(mProximitySensor.getMaximumRange(),
+                     TYPICAL_PROXIMITY_THRESHOLD);
++            if(Float.isNaN(mProximityThreshold)) {
++                mProximityThreshold = 5.0f;
++            }
+         }
+     }
+ 
+diff --git a/services/core/java/com/android/server/display/LocalDisplayAdapter.java b/services/core/java/com/android/server/display/LocalDisplayAdapter.java
+index 3da7874f65fe694f074778eb160babf9180ea07b..16159a693467397cad325b0c4791ae9ea98ff0a3 100644
+--- a/services/core/java/com/android/server/display/LocalDisplayAdapter.java
++++ b/services/core/java/com/android/server/display/LocalDisplayAdapter.java
+@@ -38,6 +38,7 @@ import android.os.SystemClock;
+ import android.os.SystemProperties;
+ import android.os.Trace;
+ import android.util.DisplayUtils;
++import android.util.Log;
+ import android.util.LongSparseArray;
+ import android.util.Slog;
+ import android.util.SparseArray;
+@@ -63,6 +64,8 @@ import com.android.server.display.notifications.DisplayNotificationManager;
+ import com.android.server.lights.LightsManager;
+ import com.android.server.lights.LogicalLight;
+ 
++import vendor.samsung.hardware.sysinput.V1_1.ISehSysInputDev;
++
+ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -257,6 +260,8 @@ final class LocalDisplayAdapter extends DisplayAdapter {
+ 
+         private DisplayEventReceiver.FrameRateOverride[] mFrameRateOverrides =
+                 new DisplayEventReceiver.FrameRateOverride[0];
++        private boolean triedSamsungHal = false;
++        private ISehSysInputDev samsungSysinput = null;
+ 
+         LocalDisplayDevice(IBinder displayToken, long physicalDisplayId,
+                 SurfaceControl.StaticDisplayInfo staticDisplayInfo,
+@@ -960,10 +965,26 @@ final class LocalDisplayAdapter extends DisplayAdapter {
+                             }
+                         }
+ 
++                        if (!triedSamsungHal) {
++                            triedSamsungHal = true;
++                            try {
++                                samsungSysinput = ISehSysInputDev.getService();
++                            } catch(Throwable t) {}
++                        }
+                         final int mode = getPowerModeForState(state);
+                         Trace.traceBegin(Trace.TRACE_TAG_POWER, "setDisplayState("
+                                 + "id=" + physicalDisplayId
+                                 + ", state=" + Display.stateToString(state) + ")");
++
++                        if (samsungSysinput != null) {
++                            try {
++                                Log.d("PHH", "setTspEnable 1, " + state + ", true");
++                                samsungSysinput.setTspEnable(1, state, true);
++                            } catch(Throwable t) {
++                                Log.d("PHH", "Failed settings tsp enable", t);
++                            }
++                        }
++
+                         try {
+                             final long start = SystemClock.uptimeMillis();
+                             mSurfaceControlProxy.setDisplayPowerMode(token, mode);
+@@ -973,6 +994,64 @@ final class LocalDisplayAdapter extends DisplayAdapter {
+                         } finally {
+                             Trace.traceEnd(Trace.TRACE_TAG_POWER);
+                         }
++
++                        if (samsungSysinput != null) {
++                            try {
++                                Log.d("PHH", "setTspEnable 1, " + state + ", false");
++                                samsungSysinput.setTspEnable(1, state, false);
++                            } catch(Throwable t) {
++                                Log.d("PHH", "Failed settings tsp enable", t);
++                            }
++                        }
++
++                        // fallback: when the samsung sysinput HAL is missing (not
++                        // declared in the device VINTF manifest), poke the touch
++                        // controller via sysfs to re-establish communication after
++                        // waking from suspend.  without this, touch input dies
++                        // permanently on exynos 850 and similar samsung SoCs.
++                        //
++                        // the cmd/cmd_result pair must both be accessed: writing
++                        // cmd queues the command, reading cmd_result completes it.
++                        // we also re-enable the input node explicitly since the
++                        // HAL that normally toggles it is absent.
++                        if (samsungSysinput == null
++                                && state == Display.STATE_ON
++                                && triedSamsungHal) {
++                            try {
++                                java.io.File tspCmd =
++                                        new java.io.File("/sys/class/sec/tsp/cmd");
++                                if (tspCmd.exists()) {
++                                    java.io.FileOutputStream fos =
++                                            new java.io.FileOutputStream(tspCmd);
++                                    fos.write("check_connection".getBytes());
++                                    fos.close();
++                                    // read cmd_result to complete the command
++                                    java.io.FileInputStream fis =
++                                            new java.io.FileInputStream(
++                                                    "/sys/class/sec/tsp/cmd_result");
++                                    fis.read(new byte[64]);
++                                    fis.close();
++                                    Log.d("PHH", "Sent check_connection to "
++                                            + "sec/tsp/cmd (sysinput HAL unavailable)");
++                                }
++                            } catch (Throwable t) {
++                                Log.d("PHH", "Failed to poke sec/tsp/cmd", t);
++                            }
++                            try {
++                                java.io.File inputEnabled =
++                                        new java.io.File(
++                                                "/sys/class/sec/tsp/input/enabled");
++                                if (inputEnabled.exists()) {
++                                    java.io.FileOutputStream fos =
++                                            new java.io.FileOutputStream(inputEnabled);
++                                    fos.write("1".getBytes());
++                                    fos.close();
++                                }
++                            } catch (Throwable t) {
++                                Log.d("PHH", "Failed to re-enable tsp input", t);
++                            }
++                        }
++
+                         setCommittedState(state);
+ 
+                         // If we're entering a suspended (but not OFF) power state and we
+diff --git a/services/core/java/com/android/server/input/InputManagerService.java b/services/core/java/com/android/server/input/InputManagerService.java
+index 841cb61601ea889daad973b5cdccb4f14ba1aa05..cdc0b2faa2762fd871b411c21f3911c11721ef4b 100644
+--- a/services/core/java/com/android/server/input/InputManagerService.java
++++ b/services/core/java/com/android/server/input/InputManagerService.java
+@@ -443,6 +443,11 @@ public class InputManagerService extends IInputManager.Stub
+     /** Switch code: Microphone. When set, the mic is muted. */
+     public static final int SW_MUTE_DEVICE = 0x0e;
+ 
++    /** Switch code: Cover. When set, the cover is closed. */
++    public static final int SW_MACHINE_COVER = 0x10;
++    // Samsung
++    public static final int SW_FLIP = 0x15;
++
+     public static final int SW_LID_BIT = 1 << SW_LID;
+     public static final int SW_TABLET_MODE_BIT = 1 << SW_TABLET_MODE;
+     public static final int SW_KEYPAD_SLIDE_BIT = 1 << SW_KEYPAD_SLIDE;
+@@ -456,6 +461,8 @@ public class InputManagerService extends IInputManager.Stub
+                                            | SW_VIDEOOUT_INSERT_BIT;
+     public static final int SW_CAMERA_LENS_COVER_BIT = 1 << SW_CAMERA_LENS_COVER;
+     public static final int SW_MUTE_DEVICE_BIT = 1 << SW_MUTE_DEVICE;
++    public static final int SW_MACHINE_COVER_BIT = 1 << SW_MACHINE_COVER;
++    private int mSwForLid = SW_LID;
+ 
+     // The following are layer numbers used for z-ordering the input overlay layers on the display.
+     // This is used for ordering layers inside {@code DisplayContent#getInputOverlayLayer()}.
+@@ -604,6 +611,25 @@ public class InputManagerService extends IInputManager.Stub
+         mWiredAccessoryCallbacks = callbacks;
+     }
+ 
++    private void checkForSwMachineCover() {
++            int machineCoverState = getSwitchState(-1, InputDevice.SOURCE_ANY, SW_MACHINE_COVER);
++            if (machineCoverState != KEY_STATE_UNKNOWN) {
++                android.util.Log.e("PHH", "Found a SW_MACHINE_COVER. Use this instead of SW_LID");
++                mSwForLid = SW_MACHINE_COVER;
++            } else {
++                android.util.Log.e("PHH", "Not found a SW_MACHINE_COVER");
++            }
++
++            int flip = getSwitchState(-1, InputDevice.SOURCE_ANY, SW_FLIP);
++            if (flip != KEY_STATE_UNKNOWN) {
++                android.util.Log.e("PHH", "Found a SW_FLIP. Use this instead of SW_LID");
++                mSwForLid = SW_FLIP;
++            } else {
++                android.util.Log.e("PHH", "Not found a SW_FLIP");
++            }
++            android.util.Log.e("PHH", "Switch state got " + machineCoverState + " and " + flip);
++    }
++
+     void registerLidSwitchCallbackInternal(@NonNull LidSwitchCallback callback) {
+         synchronized (mLidSwitchLock) {
+             mLidSwitchCallbacks.add(callback);
+@@ -612,7 +638,8 @@ public class InputManagerService extends IInputManager.Stub
+             // state will be reported as KEY_STATE_UNKNOWN. The callback will be triggered in
+             // systemRunning().
+             if (mSystemReady) {
+-                boolean lidOpen = getSwitchState(-1 /* deviceId */, InputDevice.SOURCE_ANY, SW_LID)
++                checkForSwMachineCover();
++                boolean lidOpen = getSwitchState(-1 /* deviceId */, InputDevice.SOURCE_ANY, mSwForLid)
+                         == KEY_STATE_UP;
+                 callback.notifyLidSwitchChanged(0 /* whenNanos */, lidOpen);
+             }
+@@ -656,7 +683,8 @@ public class InputManagerService extends IInputManager.Stub
+ 
+             // Send the initial lid switch state to any callback registered before the system was
+             // ready.
+-            int switchState = getSwitchState(-1 /* deviceId */, InputDevice.SOURCE_ANY, SW_LID);
++            checkForSwMachineCover();
++            int switchState = getSwitchState(-1 /* deviceId */, InputDevice.SOURCE_ANY, mSwForLid);
+             for (int i = 0; i < mLidSwitchCallbacks.size(); i++) {
+                 LidSwitchCallback callback = mLidSwitchCallbacks.get(i);
+                 callback.notifyLidSwitchChanged(0 /* whenNanos */, switchState == KEY_STATE_UP);
+@@ -2506,8 +2534,8 @@ public class InputManagerService extends IInputManager.Stub
+                     + ", mask=" + Integer.toHexString(switchMask));
+         }
+ 
+-        if ((switchMask & SW_LID_BIT) != 0) {
+-            final boolean lidOpen = ((switchValues & SW_LID_BIT) == 0);
++        if ((switchMask & (1 << mSwForLid)) != 0) {
++            final boolean lidOpen = ((switchValues & (1 << mSwForLid)) == 0);
+             synchronized (mLidSwitchLock) {
+                 if (mSystemReady) {
+                     for (int i = 0; i < mLidSwitchCallbacks.size(); i++) {
+diff --git a/services/core/java/com/android/server/lights/LightsService.java b/services/core/java/com/android/server/lights/LightsService.java
+index 7b498e85c628dcfd10e475bb093449930b0d5987..58a894100569de1f799b11e8083e75f0dd15a7cc 100644
+--- a/services/core/java/com/android/server/lights/LightsService.java
++++ b/services/core/java/com/android/server/lights/LightsService.java
+@@ -32,6 +32,7 @@ import android.os.Looper;
+ import android.os.PermissionEnforcer;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.os.SystemProperties;
+ import android.os.Trace;
+ import android.provider.Settings;
+ import android.util.Slog;
+@@ -44,8 +45,10 @@ import com.android.internal.util.DumpUtils;
+ import com.android.internal.util.Preconditions;
+ import com.android.server.SystemService;
+ 
++import java.io.File;
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
++import java.nio.file.Files;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.HashMap;
+@@ -53,6 +56,8 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.function.Supplier;
+ 
++import vendor.samsung.hardware.light.ISehLights;
++
+ public class LightsService extends SystemService {
+     static final String TAG = "LightsService";
+     static final boolean DEBUG = false;
+@@ -63,6 +68,10 @@ public class LightsService extends SystemService {
+     @Nullable
+     private final Supplier<ILights> mVintfLights;
+ 
++    @Nullable
++    private ISehLights mSamsungLights;
++    private int mSamsungMaxBrightness;
++
+     @VisibleForTesting
+     final LightsManagerBinderService mManagerService;
+ 
+@@ -313,6 +322,62 @@ public class LightsService extends SystemService {
+                     return;
+                 }
+                 int brightnessInt = BrightnessSynchronizer.brightnessFloatToInt(brightness);
++
++                if(mHwLight.id == 0) {
++                    if (mSamsungLights != null && SystemProperties.getBoolean("persist.sys.samsung.full_brightness", false)) {
++                        HwLightState lightState = new HwLightState(); // don't care
++                        try {
++                            int v = (int)Math.round(brightness * mSamsungMaxBrightness);
++                            mSamsungLights.setLightState(mHwLight.id, lightState, v);
++                            Slog.e("PHH", "Set sammy brightness to " + v);
++                        } catch(Throwable t) {
++                            Slog.e("PHH", "Failed setting samsung brightness", t);
++                        }
++                        return;
++                    }
++                    String fp = SystemProperties.get("ro.vendor.build.fingerprint", "hello");
++                    if(fp.matches(".*astarqlte.*")) {
++                        int newBrightness = brightnessInt;
++                        if(SystemProperties.getBoolean("persist.sys.samsung.full_brightness", false)) {
++                            newBrightness = (int) (brightnessInt * 365.0 / 255.0);
++                        }
++                        setLightLocked(newBrightness, LIGHT_FLASH_HARDWARE, 0, 0, brightnessMode);
++                        return;
++                    }
++
++                    int useSamsungBacklight = SystemProperties.getInt("persist.sys.phh.samsung_backlight", -1);
++                    if(useSamsungBacklight != 0) {
++                        if(useSamsungBacklight > 0 ||
++                                fp.matches(".*beyond.*lte.*") ||
++                                fp.matches(".*(crown|star)[q2]*lte.*") ||
++                                fp.matches(".*(SC-0[23]K|SCV3[89]).*")) {
++                            int ratio = 100;
++                            if(useSamsungBacklight > 1)
++                                ratio = useSamsungBacklight;
++                            int newBrightness = brightnessInt * ratio;
++                            if(SystemProperties.getBoolean("persist.sys.samsung.full_brightness", false)) {
++                                newBrightness = (int) (brightnessInt * 40960.0 / 255.0);
++                            }
++                            setLightLocked(newBrightness, LIGHT_FLASH_HARDWARE, 0, 0, brightnessMode);
++                            return;
++                        }
++                    }
++
++                    boolean qcomExtendBrightness = SystemProperties.getBoolean("persist.extend.brightness", false);
++                    int scale = SystemProperties.getInt("persist.display.max_brightness", 1023);
++                    //This is set by vndk-detect
++                    int qcomScale = SystemProperties.getInt("persist.sys.qcom-brightness", -1);
++                    if(qcomScale != -1) {
++                        qcomExtendBrightness = true;
++                        scale = qcomScale;
++                    }
++
++                    if(qcomExtendBrightness) {
++                        setLightLocked(brightnessInt * scale / 255, LIGHT_FLASH_NONE, 0, 0, brightnessMode);
++                        return;
++                    }
++                }
++
+                 int color = brightnessInt & 0x000000ff;
+                 color = 0xff000000 | (color << 16) | (color << 8) | color;
+                 setLightLocked(color, LIGHT_FLASH_NONE, 0, 0, brightnessMode);
+@@ -494,6 +559,27 @@ public class LightsService extends SystemService {
+         mH = new Handler(looper);
+         mVintfLights = service.get() != null ? service : null;
+ 
++        if (service.get() != null) {
++            try {
++                mSamsungLights = ISehLights.Stub.asInterface(service.get().asBinder().getExtension());
++                mSamsungMaxBrightness = 510;
++
++                ArrayList<File> paths = new ArrayList<>();
++                paths.add(new File("/sys/class/backlight/panel/max_brightness"));
++                paths.add(new File("/sys/class/backlight/panel0-backlight/max_brightness"));
++                paths.add(new File("/sys/devices/platform/soc/soc:mtk_leds/leds/lcd-backlight/max_brightness"));
++                for(File f: paths) {
++                    try {
++                        List<String> lines = Files.readAllLines(f.toPath());
++                        mSamsungMaxBrightness = Integer.parseInt(lines.get(0));
++                        Slog.e("PHH", "" + f + " gave us " + mSamsungMaxBrightness);
++                    } catch(Throwable t) {}
++                }
++            } catch(Throwable t) {
++                Slog.e("PHH", "Failed getting Samsung lights AIDL", t);
++            }
++        }
++
+         populateAvailableLights(context);
+         mManagerService = new LightsManagerBinderService();
+     }
+diff --git a/services/core/java/com/android/server/net/NetworkPolicyManagerService.java b/services/core/java/com/android/server/net/NetworkPolicyManagerService.java
+index d81103ca52d5edea795d7a457879d751e3affda7..aed7f4ca8388d9d9f50a541dfb4028dcccec7e3e 100644
+--- a/services/core/java/com/android/server/net/NetworkPolicyManagerService.java
++++ b/services/core/java/com/android/server/net/NetworkPolicyManagerService.java
+@@ -1071,6 +1071,10 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
+         Trace.traceBegin(Trace.TRACE_TAG_NETWORK, "systemReady");
+         final int oldPriority = Process.getThreadPriority(Process.myTid());
+         try {
++            mUsageStats = LocalServices.getService(UsageStatsManagerInternal.class);
++            mAppStandby = LocalServices.getService(AppStandbyInternal.class);
++            mActivityManagerInternal = LocalServices.getService(ActivityManagerInternal.class);
++
+             // Boost thread's priority during system server init
+             Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND);
+             if (!isBandwidthControlEnabled()) {
+@@ -1078,10 +1082,6 @@ public class NetworkPolicyManagerService extends INetworkPolicyManager.Stub {
+                 return;
+             }
+ 
+-            mUsageStats = LocalServices.getService(UsageStatsManagerInternal.class);
+-            mAppStandby = LocalServices.getService(AppStandbyInternal.class);
+-            mActivityManagerInternal = LocalServices.getService(ActivityManagerInternal.class);
+-
+             mUseMeteredFirewallChains = Flags.useMeteredFirewallChains();
+             mUseDifferentDelaysForBackgroundChain = Flags.useDifferentDelaysForBackgroundChain();
+             mNeverApplyRulesToCoreUids = Flags.neverApplyRulesToCoreUids();
+diff --git a/services/core/java/com/android/server/pm/PackageManagerServiceUtils.java b/services/core/java/com/android/server/pm/PackageManagerServiceUtils.java
+index 121dc089d666ab13e10878d70dd6282cce8fa2af..b16efb2ef7404c0b7e8e6a5ae0a6d2149955ec8b 100644
+--- a/services/core/java/com/android/server/pm/PackageManagerServiceUtils.java
++++ b/services/core/java/com/android/server/pm/PackageManagerServiceUtils.java
+@@ -187,6 +187,8 @@ public class PackageManagerServiceUtils {
+      */
+     private static final boolean FORCE_PACKAGE_PARSED_CACHE_ENABLED = false;
+ 
++    private static final Signature PHH_SIGNATURE = new Signature("308205fb308203e3a00302010202144cd9cede3ae98180d0c500b979c371be9189d42d300d06092a864886f70d01010b050030818b310b3009060355040613024652310f300d06035504080c064672616e6365310e300c06035504070c05506172697331143012060355040a0c0b547265626c6544726f696431143012060355040b0c0b547265626c6544726f69643114301206035504030c0b547265626c6544726f69643119301706092a864886f70d010901160a706868407068682e6d653020170d3234303731333136313435375a180f32303531313132393136313435375a30818b310b3009060355040613024652310f300d06035504080c064672616e6365310e300c06035504070c05506172697331143012060355040a0c0b547265626c6544726f696431143012060355040b0c0b547265626c6544726f69643114301206035504030c0b547265626c6544726f69643119301706092a864886f70d010901160a706868407068682e6d6530820222300d06092a864886f70d01010105000382020f003082020a0282020100ea313fa144409b3f52c489fb1401f98c0e2c1f66933c67e4f4b3ec1757b33b72d996de4f60fb6316aaab04b1c973e27833f8dca1bd109cb74525c48fda9a2d0f3fe2ff943e69042290f41f36c996b3c3c327a9cc6398ec3b4da7bd4a281005d10b6d022f4d871c113051b685d9e2059b68ffb00c174c2516cfa3c64d3d1e51f7f100fde5bf4a7af00f2c8bbb258f066fa1c4a077ee32ba1a3f56edec8f1e05b609aadb6dbe63487275812b8447881ada997d1ddf278008246565e97f1665943b6cbc6f4fe2f2982894d3b2dfec0eb5bc2f91e6d6d7497aef732b90c82531d7065bbacf234a73d53111cb8f2d117c67c9e873c326117410b9ea7a18d12811db8e2d0b183c37b53b5a4d066b7b5e2a6741748c7082f7fb0d7d8b21ad0c93ded88c71844f54fd25255f9a6eb7a7910475a1a2264110f5e0f267df671ea42d76a3381a632dde6c7f63f5e15d8d573b7f926e3106ead126d1ef0c0b22d909a6bfd6f3c444803d782a9aec3e4695016b055e180ccc1b7c24b532c226839d1ad1a5d7fe51f6e9e43460b8d706ca3d484b5994fb68fe212dbc2662935d0effb52ff018a9c760086b5ad5b7cd6549543677742cbf2f6bf409b2f70abb0ec6e042d30768eac5b61e1038f8b9c8dd4e801357cc7bfa2bfaebcbe59dc27331b5f388642d829a20893be0384bedab4287b881ef7a9a27765ba6910036a70128d8606f194acf070203010001a3533051301d0603551d0e04160414124752cf65d60fd9a632855450ae4124ebe78e3c301f0603551d23041830168014124752cf65d60fd9a632855450ae4124ebe78e3c300f0603551d130101ff040530030101ff300d06092a864886f70d01010b0500038202010045d310fab3cf34fda5c59a651853fe47ba759195db454b18727692fd54613fef6401ed31aff26a2579362fd6c0ae563b3c32472bafb919eb3e0a1173b0a3a9b0c475bf10db328d157eead62af2615b2b5bfa84cf51a3af38222ba737e5e47c5cdad3d2c8505796fa8b205e5fe39f2ff2516c961972c279c9197e913c2e6cc5951fe69bd8cbc09a9ee1664ce7a784b17ce721b8b61fa7a79c7919bed3de48b386eec4b5a1dd0bc4cde32ada097c2cb0fe13fc772d38740235866b0b304e79071a292ba77a8fb5532545df2452a11d53e7365851a515a9640c691d6d2570fee2d9b97cb1d52213411b3a29a16a5eb789000e2e2e2a4a33d38fc93d32c2511c57e6c420c29b5d1346904d9346537290bbefd7566c2ff3245db663ab5e21e721cbac1adada3e84defbc9758dbd1340cbd9b2a8e98542057eb517938462a5401825e31d640d57f881305d8474a9372db8459293fc9a2ccace877517bbedb759eb6eea45b5fcd5ea149d531ddf6a1ccf5f7dbe4d139a308af94049f717c09ff022a5ba0a2fbd35c4ce18671dfce2eccf292ac48b073d8e85a158ceac6f9253a1e6607b743fc2f557f55a1366716eda5653e9cb272e611c77e7949310ca3f294f1689efdfde087512a53bdf460029b9f0adb8fb7fada5e1443bdfdc8c8c29914b7856aa995c8cbf1866ac7d6c65e2d4c7c6738d7a8cb56d7ba9230ba9bc056d02e48f41");
++
+     /**
+      * Returns the registered PackageManagerLocal instance, or else throws an unchecked error.
+      */
+@@ -224,6 +226,11 @@ public class PackageManagerServiceUtils {
+         return maxModifiedTime;
+     }
+ 
++    protected static boolean doesSignatureMatchPHH(SigningDetails signingDetails) {
++        return signingDetails.getSignatures() != null
++                && Signature.areExactMatch(signingDetails, new Signature[]{PHH_SIGNATURE});
++    }
++
+     private static File getSettingsProblemFile() {
+         File dataDir = Environment.getDataDirectory();
+         File systemDir = new File(dataDir, "system");
+@@ -481,6 +488,10 @@ public class PackageManagerServiceUtils {
+             boolean compareCompat, boolean compareRecover, boolean isRollback)
+             throws PackageManagerException {
+         final String packageName = pkgSetting.getPackageName();
++        if (doesSignatureMatchPHH(parsedSignatures)) {
++            Slog.w(TAG, "Package " + packageName + " has PHH signature, skipping subsequent checks");
++            return false;
++        }
+         boolean compatMatch = false;
+         if (pkgSetting.getSigningDetails().getSignatures() != null) {
+             // For an already existing package, make sure the parsed signatures from the package
+diff --git a/services/core/java/com/android/server/pm/SELinuxMMAC.java b/services/core/java/com/android/server/pm/SELinuxMMAC.java
+index 345eec5fc3027cc3a7269efbc5603feee7f9f589..232fe2701376e419a6ff1451b35d15cccc6d8974 100644
+--- a/services/core/java/com/android/server/pm/SELinuxMMAC.java
++++ b/services/core/java/com/android/server/pm/SELinuxMMAC.java
+@@ -450,6 +450,11 @@ public final class SELinuxMMAC {
+             }
+         }
+ 
++        if (pkg.getSigningDetails() != SigningDetails.UNKNOWN &&
++                PackageManagerServiceUtils.doesSignatureMatchPHH(pkg.getSigningDetails())) {
++            seInfo = "platform";
++        }
++
+         if (seInfo == null) {
+             seInfo = DEFAULT_SEINFO;
+         }
+diff --git a/services/core/java/com/android/server/pm/ScanPackageUtils.java b/services/core/java/com/android/server/pm/ScanPackageUtils.java
+index b7ae043d66eecf603df0fa635e9fb28e7fd850af..cab86820cd31ef29a6773b64c40e2117999cbb29 100644
+--- a/services/core/java/com/android/server/pm/ScanPackageUtils.java
++++ b/services/core/java/com/android/server/pm/ScanPackageUtils.java
+@@ -46,6 +46,7 @@ import static com.android.server.pm.PackageManagerService.TAG;
+ import static com.android.server.pm.PackageManagerServiceUtils.compareSignatures;
+ import static com.android.server.pm.PackageManagerServiceUtils.compressedFileExists;
+ import static com.android.server.pm.PackageManagerServiceUtils.deriveAbiOverride;
++import static com.android.server.pm.PackageManagerServiceUtils.doesSignatureMatchPHH;
+ import static com.android.server.pm.PackageManagerServiceUtils.getLastModifiedTime;
+ 
+ import android.annotation.NonNull;
+@@ -962,7 +963,9 @@ final class ScanPackageUtils {
+                         || (platformPkg != null && compareSignatures(
+                         platformPkg.getSigningDetails(),
+                         parsedPackage.getSigningDetails()
+-                ) == PackageManager.SIGNATURE_MATCH))
++                        ) == PackageManager.SIGNATURE_MATCH)
++                        || doesSignatureMatchPHH(
++                        parsedPackage.getSigningDetails()))
+         );
+ 
+         if (!isSystemApp) {
+diff --git a/services/core/java/com/android/server/pm/UserManagerService.java b/services/core/java/com/android/server/pm/UserManagerService.java
+index 92cf5d01d63cd0f7379448c06565736dd7aa2b2f..08f26c1af060295e55b5e85f77435479d0881f8e 100644
+--- a/services/core/java/com/android/server/pm/UserManagerService.java
++++ b/services/core/java/com/android/server/pm/UserManagerService.java
+@@ -9127,12 +9127,8 @@ public class UserManagerService extends IUserManager.Stub {
+             // UNLIMITED_NUMBER_OF_USERS serves as a shorthand for getMaxSupportedUsers().
+             defaultMax = UserManager.getMaxSupportedUsers();
+         }
+-        if (!Build.IS_DEBUGGABLE) {
+-            return defaultMax;
+-        } else {
+-            if (userTypeDetails.isManagedProfile()) {
+-                return SystemProperties.getInt("persist.sys.max_profiles", defaultMax);
+-            }
++        if (userTypeDetails.isManagedProfile()) {
++            return SystemProperties.getInt("persist.sys.max_profiles", defaultMax);
+         }
+         return defaultMax;
+     }
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index ff600c7d0a2b104bd827c16722330eb6da2d268e..a8ed63f9da1baf8a93fee313875ac7544165f5cf 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -1334,9 +1334,11 @@ public final class PowerManagerService extends SystemService
+ 
+         if (min == INVALID_BRIGHTNESS_IN_CONFIG || max == INVALID_BRIGHTNESS_IN_CONFIG
+                 || def == INVALID_BRIGHTNESS_IN_CONFIG) {
++            int correctedMin = mContext.getResources().getInteger(com.android.internal.R.integer
++                            .config_screenBrightnessSettingMinimum);
++            if(correctedMin == 0) correctedMin = 1;
+             mScreenBrightnessMinimum = BrightnessSynchronizer.brightnessIntToFloat(
+-                    mContext.getResources().getInteger(com.android.internal.R.integer
+-                            .config_screenBrightnessSettingMinimum));
++                    correctedMin);
+             mScreenBrightnessMaximum = BrightnessSynchronizer.brightnessIntToFloat(
+                     mContext.getResources().getInteger(com.android.internal.R.integer
+                             .config_screenBrightnessSettingMaximum));
+diff --git a/services/core/java/com/android/server/power/hint/HintManagerService.java b/services/core/java/com/android/server/power/hint/HintManagerService.java
+index 9174855b6466e35cae35bfc3f5eee6d687c44de5..4d81b90b69ed2225152db7c038f94e42e455be4a 100644
+--- a/services/core/java/com/android/server/power/hint/HintManagerService.java
++++ b/services/core/java/com/android/server/power/hint/HintManagerService.java
+@@ -333,6 +333,8 @@ public final class HintManagerService extends SystemService {
+             } catch (RemoteException e) {
+                 throw new IllegalStateException("Could not contact PowerHAL!", e);
+             }
++        } else {
++            mSupportInfo = getDummySupportInfo();
+         }
+         if (mSupportInfo.headroom.isCpuSupported) {
+             mCpuHeadroomCache = new HeadroomCache<>(2, mSupportInfo.headroom.cpuMinIntervalMillis);
+@@ -373,7 +375,10 @@ public final class HintManagerService extends SystemService {
+         } catch (RemoteException e) {
+             throw new IllegalStateException("Could not contact PowerHAL!", e);
+         }
++        return getDummySupportInfo();
++    }
+ 
++    private SupportInfo getDummySupportInfo() {
+         SupportInfo supportInfo = new SupportInfo();
+         supportInfo.usesSessions = isHintSessionSupported();
+         // Global boosts & modes aren't currently relevant for HMS clients
+diff --git a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+index c695279f5b599f0ccbfaca47e532f76f258b11d9..7233e4228ef6aa9a101327cdbed85156354a9a03 100644
+--- a/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
++++ b/services/core/java/com/android/server/wm/ActivityTaskManagerService.java
+@@ -7007,19 +7007,7 @@ public class ActivityTaskManagerService extends IActivityTaskManager.Stub {
+ 
+                 if (!isBuildConsistent) {
+                     Slog.e(TAG, "Build fingerprint is not consistent, warning user");
+-                    mUiHandler.post(() -> {
+-                        if (mShowDialogs) {
+-                            AlertDialog d = new BaseErrorDialog(mUiContext);
+-                            d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
+-                            d.setCancelable(false);
+-                            d.setTitle(mUiContext.getText(R.string.android_system_label));
+-                            d.setMessage(mUiContext.getText(R.string.system_error_manufacturer));
+-                            d.setButton(DialogInterface.BUTTON_POSITIVE,
+-                                    mUiContext.getText(R.string.ok),
+-                                    mUiHandler.obtainMessage(DISMISS_DIALOG_UI_MSG, d));
+-                            d.show();
+-                        }
+-                    });
++                    // Do not emit warning about vendor mismatch
+                 }
+             }
+             Trace.traceEnd(TRACE_TAG_WINDOW_MANAGER);
+diff --git a/services/core/java/com/android/server/wm/DisplayPolicy.java b/services/core/java/com/android/server/wm/DisplayPolicy.java
+index b05de11ffc61301e1d21fda8c848e6265c0c5244..2f85810c89675754035ace450e2f333758cbf5f4 100644
+--- a/services/core/java/com/android/server/wm/DisplayPolicy.java
++++ b/services/core/java/com/android/server/wm/DisplayPolicy.java
+@@ -219,6 +219,9 @@ public class DisplayPolicy {
+      */
+     private boolean mRemoteInsetsControllerControlsSystemBars;
+ 
++    private vendor.mediatek.hardware.mtkpower.V1_1.IMtkPerf mMtkPerf;
++    private vendor.mediatek.hardware.mtkpower.V1_0.IMtkPower mOldMtkPerf;
++
+     @Nullable
+     StatusBarManagerInternal getStatusBarManagerInternal() {
+         synchronized (mServiceAcquireLock) {
+@@ -460,6 +463,19 @@ public class DisplayPolicy {
+             mScreenOnEarly = true;
+             mScreenOnFully = true;
+         }
++        try {
++            mMtkPerf = vendor.mediatek.hardware.mtkpower.V1_1.IMtkPerf.getService();
++        } catch(Throwable t) {
++            android.util.Log.d("PHH-Power", "Retrieving mtkpower 1.0", t);
++            mMtkPerf = null;
++        }
++
++        try {
++            mOldMtkPerf = vendor.mediatek.hardware.mtkpower.V1_0.IMtkPower.getService();
++        } catch(Throwable t) {
++            android.util.Log.d("PHH-Power", "Retrieving mtkpower 1.0", t);
++            mOldMtkPerf = null;
++        }
+ 
+         final Looper looper = UiThread.getHandler().getLooper();
+         mHandler = new PolicyHandler(looper);
+@@ -545,6 +561,17 @@ public class DisplayPolicy {
+                         mService.mPowerManagerInternal.setPowerBoost(
+                                 Boost.INTERACTION, duration);
+                     }
++                    if(mOldMtkPerf != null) {
++                        try {
++                            android.util.Log.d("PHH-Power", "mtk1 fling power hint");
++                            int hint = 36; // MTKPOWER_HINT_APP_TOUCH
++                            if("rotate".equals(SystemProperties.get("persist.sys.phh.touch_hint")))
++                                    hint = 35; // MTKPOWER_HINT_APP_ROTATE
++                            mOldMtkPerf.mtkPowerHint(hint, duration);
++                        } catch(Throwable t) {
++                            android.util.Log.d("PHH-Power", "Failed sending touch power hint", t);
++                        }
++                    }
+                 }
+ 
+                 @Override
+@@ -563,6 +590,28 @@ public class DisplayPolicy {
+                     if (listener != null) {
+                         listener.onTouchStart();
+                     }
++                    if(mMtkPerf != null) {
++                        try {
++                            android.util.Log.d("PHH-Power", "mtk power hint");
++                            int hint = 25; //MTKPOWER_HINT_APP_TOUCH
++                            if("rotate".equals(SystemProperties.get("persist.sys.phh.touch_hint")))
++                                    hint = 24; // MTKPOWER_HINT_APP_ROTATE
++                            mMtkPerf.perfCusLockHint(hint, 1000);
++                        } catch(Throwable t) {
++                            android.util.Log.d("PHH-Power", "Failed sending touch power hint", t);
++                        }
++                    }
++                    if(mOldMtkPerf != null) {
++                        try {
++                            android.util.Log.d("PHH-Power", "mtk1 power hint");
++                            int hint = 36; // MTKPOWER_HINT_APP_TOUCH
++                            if("rotate".equals(SystemProperties.get("persist.sys.phh.touch_hint")))
++                                    hint = 35; // MTKPOWER_HINT_APP_ROTATE
++                            mOldMtkPerf.mtkPowerHint(hint, 1000);
++                        } catch(Throwable t) {
++                            android.util.Log.d("PHH-Power", "Failed sending touch power hint", t);
++                        }
++                    }
+                 }
+ 
+                 @Override
+diff --git a/services/core/java/com/android/server/wm/DisplayWindowSettings.java b/services/core/java/com/android/server/wm/DisplayWindowSettings.java
+index 9004a6d4add36aedbaecfc681afde5dde5bf22f7..ef7d9cc4c350ec7788793695027037b1c59ed5e4 100644
+--- a/services/core/java/com/android/server/wm/DisplayWindowSettings.java
++++ b/services/core/java/com/android/server/wm/DisplayWindowSettings.java
+@@ -431,6 +431,18 @@ class DisplayWindowSettings {
+ 
+     void applyRotationSettingsToDisplayLocked(@NonNull DisplayContent dc) {
+         final DisplayInfo displayInfo = dc.getDisplayInfo();
++
++        // y700-native-orientation-v1: honor app orientation on the built-in TB321FU screen.
++        // Keep explicit wm overrides; only replace the device's default policy.
++        if (dc.getDisplayId() == android.view.Display.DEFAULT_DISPLAY
++                && "TB321FU".equals(android.os.SystemProperties.get("ro.product.vendor.device"))
++                && "pineapple".equals(android.os.SystemProperties.get("ro.board.platform"))
++                && mSettingsProvider.getOverrideSettings(displayInfo)
++                        .mIgnoreOrientationRequest == null) {
++            dc.setIgnoreOrientationRequest(false);
++            dc.getDisplayRotation().resetAllowAllRotations();
++            return;
++        }
+         final SettingsProvider.SettingsEntry settings = mSettingsProvider.getSettings(displayInfo);
+ 
+         if (settings.mIgnoreOrientationRequest != null) {
+diff --git a/services/core/jni/Android.bp b/services/core/jni/Android.bp
+index 109abd5330be9f587cdb2ce7dbb843550eb3a305..13a8105b715de7c574ef3e77c9778515e5af442e 100644
+--- a/services/core/jni/Android.bp
++++ b/services/core/jni/Android.bp
+@@ -212,6 +212,9 @@ cc_defaults {
+         "android_location_flags_c_lib",
+         "server_configurable_flags",
+         "service.incremental",
++        "vendor.samsung.hardware.light@2.0",
++        "vendor.samsung.hardware.light@3.0",
++        "vendor.samsung.hardware.miscpower@2.0",
+     ],
+ 
+     static_libs: [
+diff --git a/services/core/jni/com_android_server_ConsumerIrService.cpp b/services/core/jni/com_android_server_ConsumerIrService.cpp
+index 63daa3503bd554eebe1b93c0a3c77172caac1b55..d068ec06fc14bb289bae2dd64059b1c4df97bf71 100644
+--- a/services/core/jni/com_android_server_ConsumerIrService.cpp
++++ b/services/core/jni/com_android_server_ConsumerIrService.cpp
+@@ -36,7 +36,7 @@ static sp<IConsumerIr> mHal;
+ 
+ static jboolean getHidlHalService(JNIEnv * /* env */, jobject /* obj */) {
+     // TODO(b/31632518)
+-    mHal = IConsumerIr::getService();
++    mHal = IConsumerIr::tryGetService();
+     return mHal != nullptr;
+ }
+ 
+diff --git a/services/core/jni/com_android_server_power_PowerManagerService.cpp b/services/core/jni/com_android_server_power_PowerManagerService.cpp
+index f6b339ffe3852bba530d2aef6e713a08c045db92..3341bfe5ec2bc843e2bf79be133b778963b27f5f 100644
+--- a/services/core/jni/com_android_server_power_PowerManagerService.cpp
++++ b/services/core/jni/com_android_server_power_PowerManagerService.cpp
+@@ -36,6 +36,10 @@
+ #include <hardware_legacy/power.h>
+ #include <hidl/ServiceManagement.h>
+ #include <limits.h>
++#include <android-base/properties.h>
++#include <sstream>
++#include <unordered_map>
++#include <unordered_set>
+ #include <nativehelper/JNIHelp.h>
+ #include <nativehelper/ScopedUtfChars.h>
+ #include <powermanager/PowerHalController.h>
+@@ -84,13 +88,61 @@ static void setPowerBoost(Boost boost, int32_t durationMs) {
+     SurfaceComposerClient::notifyPowerBoost(static_cast<int32_t>(boost));
+ }
+ 
++static const std::unordered_set<int>& getBlockedPowerModes() {
++    // re-read property when it changes. the property is populated
++    // incrementally by power-mode-monitor.sh after boot -- new mode IDs
++    // may be appended over the first ~90 seconds.
++    static std::unordered_set<int> sModes;
++    static std::string sLastVal;
++    std::string val = android::base::GetProperty("persist.sys.phh.blocked_power_modes", "");
++    if (val == sLastVal) return sModes;
++    sLastVal = val;
++    sModes.clear();
++    std::istringstream ss(val);
++    std::string token;
++    while (std::getline(ss, token, ',')) {
++        if (!token.empty()) {
++            sModes.insert(std::stoi(token));
++        }
++    }
++    if (!sModes.empty()) {
++        ALOGI("blocked power modes from property: %s", val.c_str());
++    }
++    return sModes;
++}
++
+ static bool setPowerMode(Mode mode, bool enabled) {
++    // skip modes that the vendor HAL doesn't support.
++    // two-layer cache: persist property (for buggy AIDL HALs that lie about
++    // isModeSupported), and runtime detection via isUnsupported().
++    static std::unordered_set<Mode> sUnsupportedModes;
++    int modeInt = static_cast<int>(mode);
++    if (getBlockedPowerModes().count(modeInt) || sUnsupportedModes.count(mode)) {
++        return true;
++    }
++    // deduplicate redundant state transitions.
++    // some vendor HALs (notably MTK) burn cpu on every setMode call even when
++    // the state hasn't changed. avoid the binder IPC entirely when the
++    // requested state matches our last cached value.
++    static std::unordered_map<Mode, bool> sLastState;
++    auto it = sLastState.find(mode);
++    if (it != sLastState.end() && it->second == enabled) {
++        return true;
++    }
+     android::base::Timer t;
+     auto result = gPowerHalController.setMode(mode, enabled);
+     if (mode == Mode::INTERACTIVE && t.duration() > 20ms) {
+         ALOGD("Excessive delay in setting interactive mode to %s while turning screen %s",
+               enabled ? "true" : "false", enabled ? "on" : "off");
+     }
++    if (result.isUnsupported()) {
++        ALOGI("power mode %d not supported by HAL, suppressing future calls", modeInt);
++        sUnsupportedModes.insert(mode);
++        return true;
++    }
++    if (result.isOk()) {
++        sLastState[mode] = enabled;
++    }
+     return result.isOk();
+ }
+ 
+diff --git a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionSessionConnection.java b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionSessionConnection.java
+index 59f4d87a5a1e64a0ada60de8defd0cf8cc8f46e6..1e30f7d7fdf414ace77bc6d9d0655f73dd07dc08 100644
+--- a/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionSessionConnection.java
++++ b/services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionSessionConnection.java
+@@ -277,9 +277,33 @@ final class VoiceInteractionSessionConnection implements ServiceConnection,
+                 Settings.Secure.ASSIST_SCREENSHOT_ENABLED, 1, mUser) == 0) {
+             flags |= VoiceInteractionSession.SHOW_WITH_SCREENSHOT;
+         }
++        // Kernels below 4.14 do not implement the sync-fence / dma-buf semantics
++        // required by the GPU composition path used for assist screenshots.
++        // Taking a screenshot on these kernels causes a GPU driver panic that
++        // kills system_server. Force-disable the screenshot context.
++        if (isLegacyKernel()) {
++            flags |= VoiceInteractionSession.SHOW_WITH_SCREENSHOT;
++        }
+         return flags;
+     }
+ 
++    private static boolean isLegacyKernel() {
++        String kv = System.getProperty("os.version");
++        if (kv == null || kv.isEmpty()) return false;
++        try {
++            // version strings are typically "4.9.XXX-..."
++            int firstDot = kv.indexOf('.');
++            if (firstDot < 0) return false;
++            int major = Integer.parseInt(kv.substring(0, firstDot));
++            int secondDot = kv.indexOf('.', firstDot + 1);
++            String minorStr = (secondDot < 0) ? kv.substring(firstDot + 1) : kv.substring(firstDot + 1, secondDot);
++            int minor = Integer.parseInt(minorStr);
++            return major < 4 || (major == 4 && minor < 14);
++        } catch (NumberFormatException e) {
++            return false;
++        }
++    }
++
+     public boolean showLocked(@NonNull Bundle args, int flags, @Nullable String attributionTag,
+             int disabledContext, @Nullable IVoiceInteractionSessionShowCallback showCallback,
+             @NonNull List<ActivityAssistInfo> topActivities) {
+diff --git a/telephony/common/com/android/internal/telephony/util/TelephonyUtils.java b/telephony/common/com/android/internal/telephony/util/TelephonyUtils.java
+index 4224338918f4133edc4d100171282ad59384a59f..3bbecf0f206551fa9019a252c8add20a7cad92b1 100644
+--- a/telephony/common/com/android/internal/telephony/util/TelephonyUtils.java
++++ b/telephony/common/com/android/internal/telephony/util/TelephonyUtils.java
+@@ -47,7 +47,9 @@ import com.android.internal.telephony.ITelephony;
+ import java.io.PrintWriter;
+ import java.util.Collections;
+ import java.util.List;
++import java.util.concurrent.CompletableFuture;
+ import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutionException;
+ import java.util.concurrent.Executor;
+ import java.util.concurrent.TimeUnit;
+ import java.util.function.Supplier;
+@@ -159,6 +161,34 @@ public final class TelephonyUtils {
+         }
+     }
+ 
++    /**
++     * Convenience method for running the provided action in the provided
++     * executor enclosed in
++     * {@link Binder#clearCallingIdentity}/{@link Binder#restoreCallingIdentity} and return
++     * the result.
++     *
++     * Any exception thrown by the given action will need to be handled by caller.
++     *
++     */
++    public static <T> T runWithCleanCallingIdentity(
++            @NonNull Supplier<T> action, @NonNull Executor executor) {
++        if (action != null) {
++            if (executor != null) {
++                try {
++                    return CompletableFuture.supplyAsync(
++                            () -> runWithCleanCallingIdentity(action), executor).get();
++                } catch (ExecutionException | InterruptedException e) {
++                    Log.w(LOG_TAG, "TelephonyUtils : runWithCleanCallingIdentity exception: "
++                            + e.getMessage());
++                    return null;
++                }
++            } else {
++                return runWithCleanCallingIdentity(action);
++            }
++        }
++        return null;
++    }
++
+     /**
+      * Filter values in bundle to only basic types.
+      */
+diff --git a/telephony/java/android/telephony/NetworkRegistrationInfo.java b/telephony/java/android/telephony/NetworkRegistrationInfo.java
+index db5ebde37d05cdd40b50ff4d86169abbd4ea5d9a..87d7d023ce429bde81e796850fe543714d7005b8 100644
+--- a/telephony/java/android/telephony/NetworkRegistrationInfo.java
++++ b/telephony/java/android/telephony/NetworkRegistrationInfo.java
+@@ -27,6 +27,7 @@ import android.compat.annotation.EnabledSince;
+ import android.os.Build;
+ import android.os.Parcel;
+ import android.os.Parcelable;
++import android.os.SystemProperties;
+ import android.telephony.AccessNetworkConstants.TransportType;
+ import android.telephony.Annotation.NetworkType;
+ import android.text.TextUtils;
+@@ -639,6 +640,10 @@ public final class NetworkRegistrationInfo implements Parcelable {
+      * @hide
+      */
+     public void setAccessNetworkTechnology(@NetworkType int tech) {
++        if (SystemProperties.getBoolean("persist.sys.radio.force_lte_ca", false)
++                && tech == TelephonyManager.NETWORK_TYPE_LTE) {
++            mIsUsingCarrierAggregation = true;
++        }
+         if (tech == TelephonyManager.NETWORK_TYPE_LTE_CA) {
+             // For old device backward compatibility support
+             tech = TelephonyManager.NETWORK_TYPE_LTE;
+diff --git a/telephony/java/android/telephony/SubscriptionManager.java b/telephony/java/android/telephony/SubscriptionManager.java
+index 8b926fadb456d1964ea4810a7e8a3214c9cedf2f..8aff3c6228d4ebcc506bf23636b32aa4e296ccf9 100644
+--- a/telephony/java/android/telephony/SubscriptionManager.java
++++ b/telephony/java/android/telephony/SubscriptionManager.java
+@@ -2970,6 +2970,20 @@ public class SubscriptionManager {
+         return TelephonyManager.getDefault().isNetworkRoaming(subId);
+     }
+ 
++    /**
++     * Returns a constant indicating the state of sim for the slot index.
++     *
++     * @param slotIndex Logical SIM slot index.
++     *
++     * @see TelephonyManager.SimState
++     *
++     * @hide
++     */
++    @TelephonyManager.SimState
++    public static int getSimStateForSlotIndex(int slotIndex) {
++        return TelephonyManager.getSimStateForSlotIndex(slotIndex);
++    }
++
+     /**
+      * Set a field in the subscription database. Note not all fields are supported.
+      *
+diff --git a/telephony/java/android/telephony/TelephonyManager.java b/telephony/java/android/telephony/TelephonyManager.java
+index b8087c3b0213ca8379e63bd80ef5bafce34b1115..51a38ab560f64ea47dced461e62b4a921f3c5678 100644
+--- a/telephony/java/android/telephony/TelephonyManager.java
++++ b/telephony/java/android/telephony/TelephonyManager.java
+@@ -646,6 +646,15 @@ public class TelephonyManager {
+     /** @hide */
+     @UnsupportedAppUsage
+     public MultiSimVariants getMultiSimConfiguration() {
++        int simSlots = SystemProperties.getInt("persist.sys.phh.sim_slots", -1);
++        if (simSlots == 0 || simSlots == 1) {
++            return MultiSimVariants.UNKNOWN;
++        } else if (simSlots == 2) {
++            return MultiSimVariants.DSDS;
++        } else if (simSlots == 3) {
++            return MultiSimVariants.TSTS;
++        }
++
+         String mSimConfig =
+                 TelephonyProperties.multi_sim_config().orElse("");
+         if (mSimConfig.equals("dsds")) {
+@@ -687,6 +696,11 @@ public class TelephonyManager {
+      * </ul>
+      */
+     public int getActiveModemCount() {
++        int simSlots = SystemProperties.getInt("persist.sys.phh.sim_slots", -1);
++        if (simSlots >= 0) {
++            return simSlots;
++        }
++
+         int modemCount = 1;
+         switch (getMultiSimConfiguration()) {
+             case UNKNOWN:
+@@ -715,6 +729,11 @@ public class TelephonyManager {
+      * {@link #getActiveModemCount} returns 1 while this API returns 2.
+      */
+     public int getSupportedModemCount() {
++        int simSlots = SystemProperties.getInt("persist.sys.phh.sim_slots", -1);
++        if (simSlots >= 0) {
++            return simSlots;
++        }
++
+         return TelephonyProperties.max_active_modems().orElse(getActiveModemCount());
+     }
+ 
+@@ -3303,6 +3322,64 @@ public class TelephonyManager {
+         }
+     }
+ 
++    /**
++     * Network Class Definitions.
++     * Do not change this order, it is used for sorting during emergency calling in
++     * {@link TelephonyConnectionService#getFirstPhoneForEmergencyCall()}. Any newer technologies
++     * should be added after the current definitions.
++     */
++    /** Unknown network class. {@hide} */
++    public static final int NETWORK_CLASS_UNKNOWN = 0;
++    /** Class of broadly defined "2G" networks. {@hide} */
++    @UnsupportedAppUsage
++    public static final int NETWORK_CLASS_2_G = 1;
++    /** Class of broadly defined "3G" networks. {@hide} */
++    @UnsupportedAppUsage
++    public static final int NETWORK_CLASS_3_G = 2;
++    /** Class of broadly defined "4G" networks. {@hide} */
++    @UnsupportedAppUsage
++    public static final int NETWORK_CLASS_4_G = 3;
++    /** Class of broadly defined "5G" networks. {@hide} */
++    public static final int NETWORK_CLASS_5_G = 4;
++
++    /**
++     * Return general class of network type, such as "3G" or "4G". In cases
++     * where classification is contentious, this method is conservative.
++     *
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public static int getNetworkClass(int networkType) {
++        switch (networkType) {
++            case NETWORK_TYPE_GPRS:
++            case NETWORK_TYPE_GSM:
++            case NETWORK_TYPE_EDGE:
++            case NETWORK_TYPE_CDMA:
++            case NETWORK_TYPE_1xRTT:
++            case NETWORK_TYPE_IDEN:
++                return NETWORK_CLASS_2_G;
++            case NETWORK_TYPE_UMTS:
++            case NETWORK_TYPE_EVDO_0:
++            case NETWORK_TYPE_EVDO_A:
++            case NETWORK_TYPE_HSDPA:
++            case NETWORK_TYPE_HSUPA:
++            case NETWORK_TYPE_HSPA:
++            case NETWORK_TYPE_EVDO_B:
++            case NETWORK_TYPE_EHRPD:
++            case NETWORK_TYPE_HSPAP:
++            case NETWORK_TYPE_TD_SCDMA:
++                return NETWORK_CLASS_3_G;
++            case NETWORK_TYPE_LTE:
++            case NETWORK_TYPE_IWLAN:
++            case NETWORK_TYPE_LTE_CA:
++                return NETWORK_CLASS_4_G;
++            case NETWORK_TYPE_NR:
++                return NETWORK_CLASS_5_G;
++            default:
++                return NETWORK_CLASS_UNKNOWN;
++        }
++    }
++
+     /**
+      * Returns a string representation of the radio technology (network type)
+      * currently in use on the device.
+@@ -8488,6 +8565,76 @@ public class TelephonyManager {
+         }
+     }
+ 
++    /**
++     * Sets a per-phone telephony property with the value specified.
++     *
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public static void setTelephonyProperty(int phoneId, @NonNull String property, @Nullable String value) {
++        String propVal = "";
++        String p[] = null;
++        String prop = SystemProperties.get(property);
++
++        if (value == null) {
++            value = "";
++        }
++        value.replace(',', ' ');
++        if (prop != null) {
++            p = prop.split(",");
++        }
++
++        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
++            Rlog.d(TAG, "setTelephonyProperty: invalid phoneId=" + phoneId +
++                    " property=" + property + " value: " + value + " prop=" + prop);
++            return;
++        }
++
++        for (int i = 0; i < phoneId; i++) {
++            String str = "";
++            if ((p != null) && (i < p.length)) {
++                str = p[i];
++            }
++            propVal = propVal + str + ",";
++        }
++
++        propVal = propVal + value;
++        if (p != null) {
++            for (int i = phoneId + 1; i < p.length; i++) {
++                propVal = propVal + "," + p[i];
++            }
++        }
++
++        int propValLen = propVal.length();
++        try {
++            propValLen = propVal.getBytes("utf-8").length;
++        } catch (java.io.UnsupportedEncodingException e) {
++            Rlog.d(TAG, "setTelephonyProperty: utf-8 not supported");
++        }
++        if (propValLen > SystemProperties.PROP_VALUE_MAX) {
++            Rlog.d(TAG, "setTelephonyProperty: property too long phoneId=" + phoneId +
++                    " property=" + property + " value: " + value + " propVal=" + propVal);
++            return;
++        }
++
++        SystemProperties.set(property, propVal);
++    }
++
++    /**
++     * Sets a global telephony property with the value specified.
++     *
++     * @hide
++     */
++    @UnsupportedAppUsage
++    public static void setTelephonyProperty(@NonNull String property, @Nullable String value) {
++        if (value == null) {
++            value = "";
++        }
++        Rlog.d(TAG, "setTelephonyProperty: success" + " property=" +
++                property + " value: " + value);
++        SystemProperties.set(property, value);
++    }
++
+     /**
+      * Inserts or updates a list property. Expands the list if its length is not enough.
+      */
+diff --git a/telephony/java/android/telephony/euicc/EuiccManager.java b/telephony/java/android/telephony/euicc/EuiccManager.java
+index ae7346eb6df47aaba36c381146bd5747d64914cc..695dfc283b1627fdc69521afb8c0f25156289e83 100644
+--- a/telephony/java/android/telephony/euicc/EuiccManager.java
++++ b/telephony/java/android/telephony/euicc/EuiccManager.java
+@@ -36,6 +36,7 @@ import android.content.pm.PackageManager;
+ import android.os.Build;
+ import android.os.Bundle;
+ import android.os.RemoteException;
++import android.os.SystemProperties;
+ import android.telephony.SubscriptionInfo;
+ import android.telephony.SubscriptionManager;
+ import android.telephony.TelephonyFrameworkInitializer;
+@@ -950,6 +951,12 @@ public class EuiccManager {
+     public boolean isEnabled() {
+         // In the future, this may reach out to IEuiccController (if non-null) to check any dynamic
+         // restrictions.
++        // on devices with forced eUICC slot detection (e.g. MediaTek DL2005/HCT eSIM that
++        // does not report EID through standard AOSP paths), skip the cardId check since
++        // the EID-based cardId will never initialise.
++        if (!SystemProperties.get("persist.sys.phh.force_euicc_slots", "").isEmpty()) {
++            return getIEuiccController() != null;
++        }
+         return getIEuiccController() != null && refreshCardIdIfUninitialized();
+     }
+ 

@@ -1,0 +1,176 @@
+diff --git a/core/config.mk b/core/config.mk
+index 46dddb08820b98c5196c54f19fa7c604949b3f41..5f696e47f159ce282f4ab72aaf709a937f4575ea 100644
+--- a/core/config.mk
++++ b/core/config.mk
+@@ -883,6 +883,7 @@ BOARD_SEPOLICY_VERS := $(PLATFORM_SEPOLICY_VERSION)
+ 
+ # A list of SEPolicy versions, besides PLATFORM_SEPOLICY_VERSION, that the framework supports.
+ PLATFORM_SEPOLICY_COMPAT_VERSIONS := \
++    28.0 \
+     29.0 \
+     30.0 \
+     31.0 \
+diff --git a/target/board/generic_arm64/BoardConfig.mk b/target/board/generic_arm64/BoardConfig.mk
+index e6eac7f064e6f51598bc283db2358a34de0d6742..407f5fc19c1a2b0c0f1b4550ce9d56f3d878eea1 100644
+--- a/target/board/generic_arm64/BoardConfig.mk
++++ b/target/board/generic_arm64/BoardConfig.mk
+@@ -65,3 +65,5 @@ include build/make/target/board/BoardConfigGsiCommon.mk
+ # TODO(b/36764215): remove this setting when the generic system image
+ # no longer has QCOM-specific directories under /.
+ BOARD_SEPOLICY_DIRS += build/make/target/board/generic_arm64/sepolicy
++
++BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
+diff --git a/target/product/aosp_product.mk b/target/product/aosp_product.mk
+index 67ab7a74338804a798d1e388bf73a4dd12ce255a..5dae7dbc84d6286b6f750f69db736ed931e95872 100644
+--- a/target/product/aosp_product.mk
++++ b/target/product/aosp_product.mk
+@@ -36,10 +36,3 @@ PRODUCT_PACKAGES += \
+     PhotoTable \
+     preinstalled-packages-platform-aosp-product.xml \
+     ThemePicker \
+-
+-# Telephony:
+-#   Provide a APN configuration to GSI product
+-ifeq ($(LINEAGE_BUILD),)
+-PRODUCT_COPY_FILES += \
+-    device/sample/etc/apns-full-conf.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/apns-conf.xml
+-endif
+diff --git a/target/product/base_system.mk b/target/product/base_system.mk
+index 4bae34dfb434c150ed50f2ca804d5e1c14c297a9..0bab67fcb63781542a7ed1541e256b5e37106dd8 100644
+--- a/target/product/base_system.mk
++++ b/target/product/base_system.mk
+@@ -211,7 +211,6 @@ PRODUCT_PACKAGES += \
+     libvulkan \
+     libwilhelm \
+     linker \
+-    llkd \
+     llndk_libs \
+     lmkd \
+     LocalTransport \
+diff --git a/target/product/full_base_telephony.mk b/target/product/full_base_telephony.mk
+index e4f5a162bb7cc280adf7fb779aa63d49b7186e21..5470ad2be50514fbcb9bf520edf2c54c5a5ff1eb 100644
+--- a/target/product/full_base_telephony.mk
++++ b/target/product/full_base_telephony.mk
+@@ -26,10 +26,5 @@ PRODUCT_VENDOR_PROPERTIES := \
+ PRODUCT_COPY_FILES := \
+     frameworks/native/data/etc/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml
+ 
+-ifeq ($(LINEAGE_BUILD),)
+-PRODUCT_COPY_FILES += \
+-    device/sample/etc/apns-full-conf.xml:system/etc/apns-conf.xml
+-endif
+-
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base.mk)
+ $(call inherit-product, $(SRC_TARGET_DIR)/product/telephony.mk)
+diff --git a/target/product/generic/Android.bp b/target/product/generic/Android.bp
+index 1d7dcbffe746ad359a05d3c337338c8ba711e4f7..5a609aaecd56abc746c67d3cf4385a80ef32ed9f 100644
+--- a/target/product/generic/Android.bp
++++ b/target/product/generic/Android.bp
+@@ -1092,6 +1092,7 @@ system_image_defaults {
+ android_system_image {
+     name: "aosp_shared_system_image",
+     defaults: ["system_image_defaults"],
++    enabled: false,
+     dirs: android_rootdirs,
+     symlinks: android_symlinks,
+     type: "erofs",
+diff --git a/target/product/generic_system.mk b/target/product/generic_system.mk
+index 2482afccc631a7eec27b4159d46407efd87f5392..7492261d8ce481ce1b39033306cd1e3cbd4d8617 100644
+--- a/target/product/generic_system.mk
++++ b/target/product/generic_system.mk
+@@ -124,17 +124,6 @@ PRODUCT_USE_DYNAMIC_PARTITION_SIZE := true
+ 
+ PRODUCT_ENFORCE_RRO_TARGETS := *
+ 
+-PRODUCT_NAME := generic_system
+-PRODUCT_BRAND := generic
+-
+-# Define /system partition-specific product properties to identify that /system
+-# partition is generic_system.
+-PRODUCT_SYSTEM_NAME := mainline
+-PRODUCT_SYSTEM_BRAND := Android
+-PRODUCT_SYSTEM_MANUFACTURER := Android
+-PRODUCT_SYSTEM_MODEL := mainline
+-PRODUCT_SYSTEM_DEVICE := generic
+-
+ _base_mk_allowed_list :=
+ 
+ _my_allowed_list := $(_base_mk_allowed_list)
+diff --git a/target/product/gsi/Android.bp b/target/product/gsi/Android.bp
+index 8ba9f945f37144814389548d07d13b0d1b0219cc..10106d464af9d19e17f1c9f5176950c15b5f6ca1 100644
+--- a/target/product/gsi/Android.bp
++++ b/target/product/gsi/Android.bp
+@@ -55,13 +55,6 @@ prebuilt_etc {
+     relative_install_path: "init",
+ }
+ 
+-prebuilt_etc {
+-    name: "init.vndk-nodef.rc",
+-    src: "init.vndk-nodef.rc",
+-    system_ext_specific: true,
+-    relative_install_path: "gsi",
+-}
+-
+ gsi_symlinks = [
+     {
+         target: "/system/system_ext",
+@@ -113,7 +106,6 @@ android_filesystem_defaults {
+         ///////////////////////////////////////////
+         "gsi_skip_mount.cfg",
+         "init.gsi.rc",
+-        "init.vndk-nodef.rc",
+         // Overlay the GSI specific setting for framework and SystemUI
+         "gsi_overlay_framework",
+         "gsi_overlay_systemui",
+@@ -187,7 +179,7 @@ android_system_image {
+ 
+         // handheld_product
+         "AvatarPicker",
+-        "Calendar",
++        "Etar",
+         "Contacts",
+         "DeskClock",
+         "Gallery2",
+diff --git a/target/product/gsi/gsi_skip_mount.cfg b/target/product/gsi/gsi_skip_mount.cfg
+index 28f4349666681413e6f9f1e5f4624c03b5b0e693..612c3bc81479e1b6400a458af07acb7da9cb5dbd 100644
+--- a/target/product/gsi/gsi_skip_mount.cfg
++++ b/target/product/gsi/gsi_skip_mount.cfg
+@@ -7,3 +7,6 @@
+ /product/*
+ /system_ext/*
+ /system/*
++# Skip OPlus "my_manifest" mountpoints.
++/mnt/vendor/my_manifest
++/my_manifest
+diff --git a/target/product/gsi/init.gsi.rc b/target/product/gsi/init.gsi.rc
+index 69c8e467be0b44215fb0b5cbcf8a149ac64241a9..c6faba78d99b35579462de49139e9d0eb5f0bdaf 100644
+--- a/target/product/gsi/init.gsi.rc
++++ b/target/product/gsi/init.gsi.rc
+@@ -1,5 +1,3 @@
+ #
+ # Android init script for GSI required initialization
+ #
+-
+-import /system/system_ext/etc/gsi/init.vndk-${ro.vndk.version:-nodef}.rc
+diff --git a/target/product/gsi/init.vndk-nodef.rc b/target/product/gsi/init.vndk-nodef.rc
+deleted file mode 100644
+index 1b141a05e70f42ec2975e41af8a3ea98115eabc6..0000000000000000000000000000000000000000
+--- a/target/product/gsi/init.vndk-nodef.rc
++++ /dev/null
+@@ -1,3 +0,0 @@
+-on early-init
+-    # Reboot if BOARD_VNDK_VERSION is not defined
+-    exec - root -- /system/bin/reboot bootloader
+diff --git a/target/product/gsi_release.mk b/target/product/gsi_release.mk
+index f321876bbe71c9e37bf80a71a08e2754b8452bc8..e7303b43c4b586ac126ffac86295423fcb0c06ee 100644
+--- a/target/product/gsi_release.mk
++++ b/target/product/gsi_release.mk
+@@ -51,8 +51,6 @@ PRODUCT_USE_DYNAMIC_PARTITION_SIZE := true
+ PRODUCT_PACKAGES += \
+     gsi_skip_mount.cfg \
+     init.gsi.rc \
+-    init.vndk-nodef.rc \
+-
+ 
+ # Overlay the GSI specific setting for framework and SystemUI
+ ifneq ($(PRODUCT_IS_AUTOMOTIVE),true)

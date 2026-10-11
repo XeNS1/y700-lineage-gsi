@@ -1,0 +1,384 @@
+diff --git a/boot/aidl/client/BootControlClient.cpp b/boot/aidl/client/BootControlClient.cpp
+index b212bb8d62cc6c4148bda6f0e89bbf89a357cb99..ed1fab7066c1c10424a1052277178913fdadd1ae 100644
+--- a/boot/aidl/client/BootControlClient.cpp
++++ b/boot/aidl/client/BootControlClient.cpp
+@@ -388,6 +388,121 @@ class BootControlClientHIDL final : public BootControlClient {
+     android::sp<V1_2::IBootControl> module_;
+ };
+ 
++using namespace android::hardware::boot;
++
++class BootControlClientHIDL11 final : public BootControlClient {
++  public:
++    explicit BootControlClientHIDL11(android::sp<V1_1::IBootControl> module) : module_(module) {
++        CHECK(module_ != nullptr);
++    }
++    BootControlVersion GetVersion() const override { return BootControlVersion::BOOTCTL_V1_1; }
++    int32_t GetNumSlots() const override {
++        const auto ret = module_->getNumberSlots();
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << " failed " << ret.description();
++        }
++        return ret.withDefault(-1);
++    }
++    int32_t GetCurrentSlot() const override {
++        const auto ret = module_->getCurrentSlot();
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << " failed " << ret.description();
++        }
++        return ret.withDefault(-1);
++    }
++    std::string GetSuffix(int32_t slot) const override {
++        std::string suffix;
++        const auto ret = module_->getSuffix(
++                slot,
++                [&](const ::android::hardware::hidl_string& slotSuffix) { suffix = slotSuffix; });
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << slot << ")" << " failed " << ret.description();
++        }
++        return suffix;
++    }
++    std::optional<bool> IsSlotBootable(int32_t slot) const override {
++        const auto ret = module_->isSlotBootable(slot);
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << slot << ")" << " failed " << ret.description();
++            return {};
++        }
++        const auto bool_result = ret.withDefault(V1_0::BoolResult::INVALID_SLOT);
++        if (bool_result == V1_0::BoolResult::INVALID_SLOT) {
++            return {};
++        }
++        return bool_result == V1_0::BoolResult::TRUE;
++    }
++    CommandResult MarkSlotUnbootable(int32_t slot) override {
++        CommandResult result;
++        const auto ret = module_->setSlotAsUnbootable(slot, [&](const V1_0::CommandResult& error) {
++            result.success = error.success;
++            result.errMsg = error.errMsg;
++        });
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << slot << ")" << " failed " << ret.description();
++        }
++        return result;
++    }
++    CommandResult SetActiveBootSlot(int32_t slot) override {
++        CommandResult result;
++        const auto ret = module_->setActiveBootSlot(slot, [&](const V1_0::CommandResult& error) {
++            result.success = error.success;
++            result.errMsg = error.errMsg;
++        });
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << slot << ")" << " failed " << ret.description();
++        }
++        return result;
++    }
++    CommandResult MarkBootSuccessful() override {
++        CommandResult result;
++        const auto ret = module_->markBootSuccessful([&](const V1_0::CommandResult& error) {
++            result.success = error.success;
++            result.errMsg = error.errMsg;
++        });
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << " failed " << ret.description();
++        }
++        return result;
++    }
++    std::optional<bool> IsSlotMarkedSuccessful(int32_t slot) const override {
++        const auto ret = module_->isSlotMarkedSuccessful(slot);
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << slot << ")" << " failed " << ret.description();
++            return {};
++        }
++        const auto bool_result = ret.withDefault(V1_0::BoolResult::INVALID_SLOT);
++        if (bool_result == V1_0::BoolResult::INVALID_SLOT) {
++            return {};
++        }
++        return bool_result == V1_0::BoolResult::TRUE;
++    }
++    MergeStatus getSnapshotMergeStatus() const override {
++        const auto ret = module_->getSnapshotMergeStatus();
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << " failed " << ret.description();
++        }
++        return static_cast<MergeStatus>(
++                ret.withDefault(static_cast<V1_1::MergeStatus>(MergeStatus::UNKNOWN)));
++    }
++    CommandResult SetSnapshotMergeStatus(MergeStatus merge_status) override {
++        const auto ret =
++                module_->setSnapshotMergeStatus(static_cast<V1_1::MergeStatus>(merge_status));
++        if (!ret.isOk()) {
++            LOG(ERROR) << __FUNCTION__ << "(" << merge_status << ")" << " failed "
++                       << ret.description();
++        }
++        return {.success = ret.isOk(), .errMsg = ret.description()};
++    }
++    int32_t GetActiveBootSlot() const override {
++        LOG(WARNING) << __FUNCTION__ << " is unsupported on boot v1.1, returning -1";
++        return -1;
++    }
++
++  private:
++    android::sp<V1_1::IBootControl> module_;
++};
++
+ std::unique_ptr<BootControlClient> BootControlClient::WaitForService() {
+     const auto instance_name =
+             std::string(::aidl::android::hardware::boot::IBootControl::descriptor) + "/default";
+@@ -410,13 +525,19 @@ std::unique_ptr<BootControlClient> BootControlClient::WaitForService() {
+         return nullptr;
+     }
+     android::sp<V1_2::IBootControl> v1_2_module = V1_2::IBootControl::castFrom(v1_0_module);
+-    if (v1_2_module == nullptr) {
+-        LOG(ERROR) << "IBootControl HIDL versions 1.1 and earlier are no longer supported";
+-        return nullptr;
++    if (v1_2_module != nullptr) {
++        LOG(INFO) << "Using HIDL version 1.2 of IBootControl";
++        return std::make_unique<BootControlClientHIDL>(v1_2_module);
++    }
++
++    android::sp<V1_1::IBootControl> v1_1_module = V1_1::IBootControl::castFrom(v1_0_module);
++    if (v1_1_module != nullptr) {
++        LOG(INFO) << "Using HIDL version 1.1 of IBootControl";
++        return std::make_unique<BootControlClientHIDL11>(v1_1_module);
+     }
+ 
+-    LOG(INFO) << "Using HIDL version 1.2 of IBootControl";
+-    return std::make_unique<BootControlClientHIDL>(v1_2_module);
++    LOG(ERROR) << "IBootControl HIDL version 1.0 is not supported";
++    return nullptr;
+ }
+ 
+ }  // namespace android::hal
+diff --git a/boot/aidl/client/include/BootControlClient.h b/boot/aidl/client/include/BootControlClient.h
+index ae661899a54ba8f7f9ebafa483782b191b01d01e..ae0b226d071754f52c3370bbe3008805665e8cbf 100644
+--- a/boot/aidl/client/include/BootControlClient.h
++++ b/boot/aidl/client/include/BootControlClient.h
+@@ -32,7 +32,7 @@ struct CommandResult {
+     constexpr bool IsOk() const { return success; }
+ };
+ 
+-enum class BootControlVersion { BOOTCTL_V1_2, BOOTCTL_AIDL };
++enum class BootControlVersion { BOOTCTL_V1_1, BOOTCTL_V1_2, BOOTCTL_AIDL };
+ 
+ class BootControlClient {
+   public:
+diff --git a/compatibility_matrices/Android.bp b/compatibility_matrices/Android.bp
+index 44901277185e181c8e38d1470fedf211e98d030b..5e171811fefa60ed233f230f5f4af58ca9bc0a1a 100644
+--- a/compatibility_matrices/Android.bp
++++ b/compatibility_matrices/Android.bp
+@@ -94,6 +94,10 @@ vintf_compatibility_matrix {
+         "compatibility_matrix.5.xml",
+     ],
+     kernel_configs: [
++        "kernel_config_p_4.4",
++        "kernel_config_q_4.9",
++        "kernel_config_r_4.14",
++        "kernel_config_r_4.19",
+         "kernel_config_r_5.4",
+     ],
+ }
+@@ -105,6 +109,7 @@ vintf_compatibility_matrix {
+         "compatibility_matrix.6.xml",
+     ],
+     kernel_configs: [
++        "kernel_config_q_4.9",
+         "kernel_config_s_4.14",
+         "kernel_config_s_4.19",
+         "kernel_config_s_5.4",
+diff --git a/graphics/composer/2.1/utils/command-buffer/include/composer-command-buffer/2.1/ComposerCommandBuffer.h b/graphics/composer/2.1/utils/command-buffer/include/composer-command-buffer/2.1/ComposerCommandBuffer.h
+index 9ce6eed77be7aaa6805cd403c5eb2cd24eff6324..aff5b8dece49f2ae2023eccc4a424a8eff5696f0 100644
+--- a/graphics/composer/2.1/utils/command-buffer/include/composer-command-buffer/2.1/ComposerCommandBuffer.h
++++ b/graphics/composer/2.1/utils/command-buffer/include/composer-command-buffer/2.1/ComposerCommandBuffer.h
+@@ -402,6 +402,12 @@ class CommandWriterBase {
+         endCommand();
+     }
+ 
++    void vendor800_1(uint32_t val) {
++        beginCommand(0x800 << 16, 1);
++        write(val);
++        endCommand();
++    }
++
+    protected:
+      template <typename T>
+      void beginCommand(T command, uint16_t length) {
+diff --git a/sensors/aidl/convert/convert.cpp b/sensors/aidl/convert/convert.cpp
+index 940699c83160a014e43230b08cd002175b91d7fb..58596456e376e871f51ef81cdd0a31f03d60956b 100644
+--- a/sensors/aidl/convert/convert.cpp
++++ b/sensors/aidl/convert/convert.cpp
+@@ -162,7 +162,17 @@ void convertToSensorEvent(const Event& src, sensors_event_t* dst) {
+         case SensorType::MOTION_DETECT:
+         case SensorType::HEART_BEAT:
+         case SensorType::LOW_LATENCY_OFFBODY_DETECT: {
+-            dst->data[0] = src.payload.get<Event::EventPayload::scalar>();
++            if (src.payload.getTag() == Event::EventPayload::pose6DOF) {
++                auto d = src.payload.get<Event::EventPayload::pose6DOF>();
++                auto dstr = ::android::internal::ToString(d);
++                // ALOGE("Received 6DOF for expected scalar %s", dstr.c_str());
++                dst->data[0] = d.values[0];
++            } else if (src.payload.getTag() == Event::EventPayload::vec3) {
++                auto d = src.payload.get<Event::EventPayload::vec3>();
++                dst->data[0] = d.x;
++            } else {
++                dst->data[0] = src.payload.get<Event::EventPayload::scalar>();
++            }
+             break;
+         }
+ 
+diff --git a/vibrator/1.0/Android.bp b/vibrator/1.0/Android.bp
+new file mode 100644
+index 0000000000000000000000000000000000000000..147ab7f9af86779b811079321fe5778e70a976ae
+--- /dev/null
++++ b/vibrator/1.0/Android.bp
+@@ -0,0 +1,19 @@
++// This file is autogenerated by hidl-gen -Landroidbp.
++
++package {
++    default_applicable_licenses: ["hardware_interfaces_license"],
++}
++
++hidl_interface {
++    name: "android.hardware.vibrator@1.0",
++    root: "android.hardware",
++    srcs: [
++        "types.hal",
++        "IVibrator.hal",
++    ],
++    interfaces: [
++        "android.hidl.base@1.0",
++    ],
++    gen_java: true,
++    gen_java_constants: true,
++}
+diff --git a/vibrator/1.0/IVibrator.hal b/vibrator/1.0/IVibrator.hal
+new file mode 100644
+index 0000000000000000000000000000000000000000..757ad0d74f5da506a2825e1af484fd49bb06d1b5
+--- /dev/null
++++ b/vibrator/1.0/IVibrator.hal
+@@ -0,0 +1,72 @@
++/*
++ * Copyright (C) 2016 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.hardware.vibrator@1.0;
++
++interface IVibrator {
++  /**
++   * Turn on vibrator
++   *
++   * This function must only be called after the previous timeout has expired or
++   * was canceled (through off()).
++   * @param timeout_ms number of milliseconds to vibrate.
++   * @return vibratorOnRet whether vibrator command was successful or not.
++   */
++  on(uint32_t timeoutMs) generates (Status vibratorOnRet);
++
++  /**
++   * Turn off vibrator
++   *
++   * Cancel a previously-started vibration, if any.
++   * @return vibratorOffRet whether vibrator command was successful or not.
++   */
++  off() generates (Status vibratorOffRet);
++
++  /**
++   * Returns whether the vibrator supports changes to its vibrational amplitude.
++   */
++  supportsAmplitudeControl() generates (bool supports);
++
++  /**
++   * Sets the motor's vibrational amplitude.
++   *
++   * Changes the force being produced by the underlying motor.
++   *
++   * @param amplitude The unitless force setting. Note that this number must
++   *                  be between 1 and 255, inclusive. If the motor does not
++   *                  have exactly 255 steps, it must do it's best to map it
++   *                  onto the number of steps it does have.
++   * @return status Whether the command was successful or not. Must return
++   *                Status::UNSUPPORTED_OPERATION if setting the amplitude is
++   *                not supported by the device.
++   */
++  setAmplitude(uint8_t amplitude) generates (Status status);
++
++  /**
++   * Fire off a predefined haptic event.
++   *
++   * @param event The type of haptic event to trigger.
++   * @return status Whether the effect was successfully performed or not. Must
++   *                return Status::UNSUPPORTED_OPERATION is the effect is not
++   *                supported.
++   * @return lengthMs The length of time the event is expected to take in
++   *                  milliseconds. This doesn't need to be perfectly accurate,
++   *                  but should be a reasonable approximation. Should be a
++   *                  positive, non-zero value if the returned status is
++   *                  Status::OK, and set to 0 otherwise.
++   */
++  perform(Effect effect, EffectStrength strength) generates (Status status, uint32_t lengthMs);
++};
+diff --git a/vibrator/1.0/types.hal b/vibrator/1.0/types.hal
+new file mode 100644
+index 0000000000000000000000000000000000000000..a080c079114d2dbd164c153f4e3e047a11e3d3a9
+--- /dev/null
++++ b/vibrator/1.0/types.hal
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (C) 2016 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package android.hardware.vibrator@1.0;
++
++enum Status : uint32_t {
++    OK,
++    UNKNOWN_ERROR,
++    BAD_VALUE,
++    UNSUPPORTED_OPERATION
++};
++
++@export
++enum Effect : uint32_t {
++    /**
++     * A single click effect.
++     *
++     * This effect should produce a sharp, crisp click sensation.
++     */
++    CLICK,
++    /**
++     * A double click effect.
++     *
++     * This effect should produce two sequential sharp, crisp click sensations with a minimal
++     * amount of time between them.
++     */
++    DOUBLE_CLICK
++};
++
++@export
++enum EffectStrength : uint8_t {
++    LIGHT,
++    MEDIUM,
++    STRONG
++};

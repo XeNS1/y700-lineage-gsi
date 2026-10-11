@@ -1,0 +1,1135 @@
+diff --git a/fs_mgr/fs_mgr.cpp b/fs_mgr/fs_mgr.cpp
+index 45bb7562f35cbeac29cd726e66b6a5118a25123f..514fefd13fc98f363b7782ffbffe50527d1fac87 100644
+--- a/fs_mgr/fs_mgr.cpp
++++ b/fs_mgr/fs_mgr.cpp
+@@ -440,6 +440,21 @@ static void tune_quota(const std::string& blk_device, const FstabEntry& entry,
+         return;
+     }
+ 
++    // There is no relation between quotas and encryption disabled, it's just that encryption
++    // being disabled shows that the device is pretty old, so quotas might be broken on it
++    if (!entry.fs_mgr_flags.file_encryption) {
++        LINFO << "Disabling quotas on legacy devices with encryption disabled";
++        want_quota = false;
++    }
++
++    struct utsname uts;
++    unsigned int major, minor;
++
++    if ((uname(&uts) == 0) && (sscanf(uts.release, "%u.%u", &major, &minor) == 2)) {
++        if(major < 4) want_projid = false;
++        if(major == 4 && minor < 9) want_projid = false;
++    }
++
+     if (!tune2fs_available()) {
+         LERROR << "Unable to " << (want_quota ? "enable" : "disable") << " quotas on " << blk_device
+                << " because " TUNE2FS_BIN " is missing";
+diff --git a/fs_mgr/libfiemap/image_manager.cpp b/fs_mgr/libfiemap/image_manager.cpp
+index 435f7bdf9e024492be94f1d6e1334535d6b611ac..c40069849adf7eeff15c867a0d532526e038f06e 100644
+--- a/fs_mgr/libfiemap/image_manager.cpp
++++ b/fs_mgr/libfiemap/image_manager.cpp
+@@ -156,7 +156,7 @@ bool ImageManager::MetadataDirIsTest() const {
+ }
+ 
+ bool ImageManager::IsUnreliablePinningAllowed() const {
+-    return IsSubdir(data_dir_, "/data/gsi/dsu/") || MetadataDirIsTest();
++    return IsSubdir(data_dir_, "/data/gsi/dsu/") || MetadataDirIsTest() || IsSubdir(data_dir_, "/data/gsi/phh/");
+ }
+ 
+ FiemapStatus ImageManager::CreateBackingImage(
+@@ -531,16 +531,11 @@ bool ImageManager::MapImageDevice(const std::string& name,
+         // If there is no intermediate device-mapper node, then partitions cannot be
+         // opened writable due to sepolicy and exclusivity of having a mounted
+         // filesystem. This should only happen on devices with no encryption, or
+-        // devices with FBE and no metadata encryption. For these cases we COULD
+-        // perform normal writes to /data/gsi (which is unencrypted), but given that
+-        // metadata encryption has been mandated since Android R, we don't actually
+-        // support or test this.
++        // devices with FBE and no metadata encryption. For these cases it suffices
++        // to perform normal file writes to /data/gsi (which is unencrypted).
+         //
+-        // So, we validate here that /data is backed by device-mapper. This code
+-        // isn't needed in recovery since there is no /data.
+-        //
+-        // If this logic sticks for a release, we can remove MapWithLoopDevice, as
+-        // well as WrapUserdataIfNeeded in fs_mgr.
++        // Note: this is not gated on DeviceInfo, because the recovery-specific path
++        // must only be used in actual recovery.
+         std::string block_device;
+         bool can_use_devicemapper;
+         if (!FiemapWriter::GetBlockDeviceForFile(image_header, &block_device,
+@@ -549,16 +544,25 @@ bool ImageManager::MapImageDevice(const std::string& name,
+             return false;
+         }
+ 
+-        if (!can_use_devicemapper) {
+-            LOG(ERROR) << "Cannot map image: /data must be mounted on top of device-mapper.";
++        if (can_use_devicemapper) {
++            if (!MapWithDmLinear(*partition_opener_.get(), name, timeout_ms, path)) {
++                return false;
++            }
++        } else if (!MapWithLoopDevice(name, timeout_ms, path)) {
++            return false;
++        }
++    } else {
++        if (!MapWithDmLinear(*partition_opener_.get(), name, timeout_ms, path)) {
+             return false;
+         }
+     }
+-#endif
+-
++#else
++    // In recovery, we can *only* use device-mapper, since partitions aren't
++    // mounted. That also means we cannot call GetBlockDeviceForFile.
+     if (!MapWithDmLinear(*partition_opener_.get(), name, timeout_ms, path)) {
+         return false;
+     }
++#endif
+ 
+     // Set a property so we remember this is mapped.
+     auto prop_name = GetStatusPropertyName(name);
+diff --git a/fs_mgr/libfstab/fstab.cpp b/fs_mgr/libfstab/fstab.cpp
+index 3bbb55a1007b41a2190b873f7c15217a2fcf9b1b..4affc74ce38e3f42d1b5c1170b813f560bed2ec8 100644
+--- a/fs_mgr/libfstab/fstab.cpp
++++ b/fs_mgr/libfstab/fstab.cpp
+@@ -230,7 +230,7 @@ bool ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
+ #undef CheckFlag
+ 
+         // Then handle flags that take an argument.
+-        if (StartsWith(flag, "encryptable=")) {
++        if (StartsWith(flag, "encryptable=") || StartsWith(flag, "forceencrypt=")) {
+             // The "encryptable" flag identifies adoptable storage volumes.  The
+             // argument to this flag is ignored, but it should be "userdata".
+             //
+@@ -240,9 +240,8 @@ bool ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
+             // storage volumes.  Today, FDE is no longer supported, leaving only
+             // the adoptable storage volume meaning for this flag.
+             entry->fs_mgr_flags.crypt = true;
+-        } else if (StartsWith(flag, "forceencrypt=") || StartsWith(flag, "forcefdeorfbe=")) {
+-            LERROR << "flag no longer supported: " << flag;
+-            return false;
++        } else if (StartsWith(flag, "forcefdeorfbe=")) {
++            ParseFileEncryption("aes-256-xts:aes-256-cts", entry);
+         } else if (StartsWith(flag, "voldmanaged=")) {
+             // The voldmanaged flag is followed by an = and the label, a colon and the partition
+             // number or the word "auto", e.g. voldmanaged=sdcard:3
+@@ -361,16 +360,6 @@ bool ParseFsMgrFlags(const std::string& flags, FstabEntry* entry) {
+         }
+     }
+ 
+-    // FDE is no longer supported, so reject "encryptable" when used without
+-    // "vold_managed".  For now skip this check when in recovery mode, since
+-    // some recovery fstabs still contain the FDE options since they didn't do
+-    // anything in recovery mode anyway (except possibly to cause the
+-    // reservation of a crypto footer) and thus never got removed.
+-    if (entry->fs_mgr_flags.crypt && !entry->fs_mgr_flags.vold_managed && !InRecovery()) {
+-        LERROR << "FDE is no longer supported; 'encryptable' can only be used for adoptable "
+-                  "storage";
+-        return false;
+-    }
+     return true;
+ }
+ 
+diff --git a/healthd/healthd_draw.cpp b/healthd/healthd_draw.cpp
+index 7c79319445bf22400f2cb5742167aefea86bdde4..2266233e18c1ec1103d4a120f8467d182f903c37 100644
+--- a/healthd/healthd_draw.cpp
++++ b/healthd/healthd_draw.cpp
+@@ -15,18 +15,28 @@
+  */
+ 
+ #include <android-base/stringprintf.h>
++#include <android-base/file.h>
+ #include <batteryservice/BatteryService.h>
+ #include <cutils/klog.h>
++#include <cutils/properties.h>
++#include <unistd.h>
+ 
+ #include "healthd_draw.h"
+ 
++
+ #if !defined(__ANDROID_VNDK__)
+ #include "charger.sysprop.h"
+ #endif
+ 
+-#define LOGE(x...) KLOG_ERROR("charger", x);
+-#define LOGW(x...) KLOG_WARNING("charger", x);
+-#define LOGV(x...) KLOG_DEBUG("charger", x);
++#define HARDWARE_MODEL "ro.hardware"
++
++#define LOGE(x...) KLOG_ERROR("charger", x); fprintf(stderr,x);
++#define LOGW(x...) KLOG_WARNING("charger", x); fprintf(stderr,x);
++#define LOGV(x...) KLOG_DEBUG("charger", x); fprintf(stderr,x);
++
++using ::android::base::ReadFileToString;
++using ::android::base::WriteStringToFile;
++
+ 
+ static bool get_split_screen() {
+ #if !defined(__ANDROID_VNDK__)
+@@ -73,10 +83,41 @@ HealthdDraw::HealthdDraw(animation* anim)
+         (res = gr_init_font(anim->text_clock.font_file.c_str(), &anim->text_clock.font)) < 0) {
+         LOGE("Could not load time font (%d)\n", res);
+     }
++
+     if (!anim->text_percent.font_file.empty() &&
+         (res = gr_init_font(anim->text_percent.font_file.c_str(), &anim->text_percent.font)) < 0) {
+         LOGE("Could not load percent font (%d)\n", res);
+     }
++
++    // Try to find kirin/huawei hardware
++    char prop_hardware[PROPERTY_VALUE_MAX] = {};
++
++    is_kirin = false;
++    if (property_get(HARDWARE_MODEL, prop_hardware, "") > 0) {
++        if (!strcmp(prop_hardware,"hi3660")
++            || !strcmp(prop_hardware,"hi3670")
++            || !strcmp(prop_hardware,"hi6250")
++            || !strcmp(prop_hardware,"kirin"))
++        {
++            LOGV("Kirin Huawei found\n");
++            is_kirin=true;
++
++            mMaxBrightness=4095;
++            std::string content_str;
++
++            if (ReadFileToString("/sys/class/leds/lcd_backlight0/max_brightness", &content_str)) {
++                mMaxBrightness = std::stoi(content_str);
++            }
++            else {
++                if (ReadFileToString("/sys/class/leds/lcd_backlight/max_brightness", &content_str)) {
++                    mMaxBrightness = std::stoi(content_str);
++                }
++            }
++
++            // Set max brightness
++            set_brightness(mMaxBrightness);
++        }
++    }
+ }
+ 
+ HealthdDraw::~HealthdDraw() {}
+@@ -94,9 +135,42 @@ void HealthdDraw::redraw_screen(const animation* batt_anim, GRSurface* surf_unkn
+     gr_flip();
+ }
+ 
++void HealthdDraw::set_brightness(uint32_t value) {
++    LOGV("Kirin - Try to set brightness to %d\n",value)
++    if (WriteStringToFile(std::to_string(value), "/sys/class/leds/lcd_backlight0/brightness")==false) {
++        LOGW("Kirin - WriteStringToFile failed lcd_backlight0, unable to set brightness (lcd_backlight0)\n");
++        if (WriteStringToFile(std::to_string(0), "/sys/class/leds/lcd_backlight/brightness")==false) {
++            LOGE("Kirin - WriteStringToFile failed lcd_backlight, unable to set brightness (lcd_backlight)\n");
++        }
++    }
++}
++
++
+ void HealthdDraw::blank_screen(bool blank, int drm) {
++
+     if (!graphics_available) return;
+-    gr_fb_blank(blank, drm);
++
++    bool bmulti=gr_has_multiple_connectors();
++
++    if (bmulti && (drm==1)) {
++        KLOG_WARNING("charger", "minui graphic backend don't support multi-connector for blank screen\n");
++    }
++
++    if (is_kirin) {
++        if (blank==true) {
++            LOGV("Kirin - clear screen\n")
++            //clear_screen();
++            //gr_flip();
++            set_brightness(0);
++        }
++        else {
++            set_brightness(mMaxBrightness);
++        }
++    }
++    else {
++        LOGV("Blank screen with minui api)\n");
++        gr_fb_blank(blank, drm);
++    }
+ }
+ 
+ // support screen rotation for foldable phone
+diff --git a/healthd/healthd_draw.h b/healthd/healthd_draw.h
+index 016db8e0718d674754291d80a78ab3cb28c30613..e8e51748d9010369399c5c5b0da50cba4ef26c60 100644
+--- a/healthd/healthd_draw.h
++++ b/healthd/healthd_draw.h
+@@ -84,9 +84,15 @@ class HealthdDraw {
+   // true if minui init'ed OK, false if minui init failed
+   bool graphics_available;
+ 
++  // true if kirin found
++  bool is_kirin;
++  uint32_t mMaxBrightness;
++
+  private:
+   // Configures font using given animation.
+   HealthdDraw(animation* anim);
++  // Set brightness
++  void set_brightness(uint32_t value);
+ };
+ 
+ #endif  // HEALTHD_DRAW_H
+diff --git a/healthd/healthd_mode_charger.cpp b/healthd/healthd_mode_charger.cpp
+index 54b469be397fd9562c03b4e5910dedc18b367e16..46f5e2725c83c726b5296172a6762f6052e91970 100644
+--- a/healthd/healthd_mode_charger.cpp
++++ b/healthd/healthd_mode_charger.cpp
+@@ -93,9 +93,9 @@ char* locale;
+ 
+ #define LAST_KMSG_MAX_SZ (32 * 1024)
+ 
+-#define LOGE(x...) KLOG_ERROR("charger", x);
+-#define LOGW(x...) KLOG_WARNING("charger", x);
+-#define LOGV(x...) KLOG_DEBUG("charger", x);
++#define LOGE(x...) KLOG_ERROR("charger", x); fprintf(stderr,x);
++#define LOGW(x...) KLOG_WARNING("charger", x); fprintf(stderr,x);
++#define LOGV(x...) KLOG_DEBUG("charger", x); fprintf(stderr,x);
+ 
+ namespace android {
+ 
+@@ -301,6 +301,23 @@ void Charger::BlankSecScreen() {
+     }
+ }
+ 
++void Charger::UpdateLedState() {
++
++    if (!have_battery_state_) return;
++    if (health_info_.battery_level == 0 && health_info_.battery_status == BatteryStatus::UNKNOWN) return ;
++
++    // TODO set led with battery_level in % (0->100%)
++    LOGV("Battery level = %d\n",health_info_.battery_level);
++
++    /*
++    /sys/class/leds/red/brightness
++    /sys/class/leds/green/brightness
++    /sys/class/leds/blue/brightness
++    */
++
++}
++
++
+ void Charger::UpdateScreenState(int64_t now) {
+     int disp_time;
+ 
+@@ -609,6 +626,9 @@ void Charger::OnHeartbeat() {
+      * screen transitions (animations, etc)
+      */
+     UpdateScreenState(now);
++
++    // Update Led color
++    UpdateLedState();
+ }
+ 
+ void Charger::OnHealthInfoChanged(const ChargerHealthInfo& health_info) {
+diff --git a/healthd/include_charger/charger/healthd_mode_charger.h b/healthd/include_charger/charger/healthd_mode_charger.h
+index c463b92aa81ac9cb4a5bc5bc2cd3b66e6d91d516..50267ffee8d82eeba3db40ff7d6ff013b72d22cb 100644
+--- a/healthd/include_charger/charger/healthd_mode_charger.h
++++ b/healthd/include_charger/charger/healthd_mode_charger.h
+@@ -103,6 +103,7 @@ class Charger {
+     void ProcessHallSensor(int code);
+     void HandleInputState(int64_t now);
+     void HandlePowerSupplyState(int64_t now);
++    void UpdateLedState();
+     int InputCallback(int fd, unsigned int epevents);
+     void InitHealthdDraw();
+     void InitAnimation();
+diff --git a/init/action_parser.cpp b/init/action_parser.cpp
+index 49fe24a436734aca96d1d2f4cdccbd55cd24b547..f683790e99e03c6cb0d82aa919675bffdc88dfa1 100644
+--- a/init/action_parser.cpp
++++ b/init/action_parser.cpp
+@@ -47,6 +47,7 @@ bool IsActionableProperty(Subcontext* subcontext, const std::string& prop_name)
+             "init.svc.vendor.", "ro.vendor.",    "persist.vendor.",
+             "vendor.",          "init.svc.odm.", "ro.odm.",
+             "persist.odm.",     "odm.",          "ro.boot.",
++            "nubia.perf."
+     };
+ 
+     for (const auto& prefix : kPartnerPrefixes) {
+diff --git a/init/builtins.cpp b/init/builtins.cpp
+index 4cf2b3862b8277702a7815bfaa66308ac5934e74..4a89c453bd26c76eed0960248d5ab9077eeeb97a 100644
+--- a/init/builtins.cpp
++++ b/init/builtins.cpp
+@@ -430,9 +430,13 @@ static Result<void> make_dir_with_options(const MkdirOptions& options) {
+         }
+     }
+     if (IsFbeEnabled()) {
++        //TODO FIXME
++//01-01 06:10:54.928   477   477 E vold    : Failed to set encryption policy of /data/data to be0c03668ef1fddc v1 modes 127/4 flags 0x0: Invalid argument
++//01-01 06:10:55.927     0     0 W         : c2    477 ext4_process_policy: Policy inconsistent with encryption context
++//01-01 06:10:55.927     0     0 E         : c2    477 vold: Failed to set encryption policy of /data/data to be0c03668ef1fddc v1 modes 127/4 flags 0x0: Invalid argument
++
+         if (!FscryptSetDirectoryPolicy(ref_basename, options.fscrypt_action, options.target)) {
+-            return reboot_into_recovery(
+-                    {"--prompt_and_wipe_data", "--reason=set_policy_failed:"s + options.target});
++            return {};
+         }
+     }
+     return {};
+diff --git a/init/first_stage_init.cpp b/init/first_stage_init.cpp
+index 3070fae193f31eb7d60ceb1fb540c7ca4061ef0c..469a8d98bf8c8ded0722b010299560b578d1cd58 100644
+--- a/init/first_stage_init.cpp
++++ b/init/first_stage_init.cpp
+@@ -531,7 +531,11 @@ int FirstStageMain(int argc, char** argv) {
+         }
+ 
+         if (!created_devices && !fsm->DoCreateDevices()) {
+-            LOG(FATAL) << "Failed to create devices required for first stage mount";
++            LOG(ERROR) << "Failed to create devices required for first stage mount, retrying without avb";
++            fsm = CreateFirstStageMount(cmdline + " no_vbmeta");
++            if(!fsm->DoCreateDevices()) {
++                LOG(FATAL) << "Failed to create devices required for first stage mount, retrying without avb";
++            }
+         }
+ 
+         if (!fsm->DoFirstStageMount()) {
+diff --git a/init/first_stage_mount.cpp b/init/first_stage_mount.cpp
+index 0148a5a29899e72106b84923ce0dd8475c3cefa4..5e45ad40794409d73c3a13df82deb939acfaa4b6 100644
+--- a/init/first_stage_mount.cpp
++++ b/init/first_stage_mount.cpp
+@@ -233,6 +233,12 @@ Result<std::unique_ptr<FirstStageMount>> FirstStageMount::Create(const std::stri
+     } else {
+         fstab = ReadFirstStageFstabAndroid();
+     }
++    if (cmdline.find("no_vbmeta") != std::string::npos) {
++        for(auto& part: *fstab) {
++            part.avb_keys = "";
++            part.fs_mgr_flags.avb = false;
++        }
++    }
+     if (!fstab.ok()) {
+         return fstab.error();
+     }
+@@ -269,7 +275,9 @@ bool FirstStageMountVBootV2::DoFirstStageMount() {
+         return true;
+     }
+ 
+-    if (!MountPartitions()) return false;
++    if (!MountPartitions()) {
++        return false;
++    }
+ 
+     return true;
+ }
+@@ -463,7 +471,6 @@ bool FirstStageMountVBootV2::MountPartition(const Fstab::iterator& begin, bool e
+     if (begin->fs_mgr_flags.avb) {
+         if (!SetUpDmVerity(&(*begin))) {
+             PLOG(ERROR) << "Failed to setup verity for '" << begin->mount_point << "'";
+-            return false;
+         }
+     } else {
+         LOG(INFO) << "AVB is not enabled, skip verity setup for '" << begin->mount_point << "'";
+diff --git a/init/property_service.cpp b/init/property_service.cpp
+index 3c78e761ad62e57b6633a62880271032274f6339..b26246bc33d45bd41052d66f6e144ad16da64635 100644
+--- a/init/property_service.cpp
++++ b/init/property_service.cpp
+@@ -61,6 +61,7 @@
+ #include <selinux/android.h>
+ #include <selinux/label.h>
+ #include <selinux/selinux.h>
++#include <sys/utsname.h>
+ #include <vendorsupport/api_level.h>
+ 
+ #include "debug_ramdisk.h"
+@@ -789,13 +790,24 @@ static void LoadProperties(char* data, const char* filter, const char* filename,
+             std::string error;
+             if (CheckPermissions(key, value, context, cr, &error) == PROP_SUCCESS) {
+                 auto it = properties->find(key);
++                const char *new_value = value;
++
++                if(strcmp("ro.apex.updatable", key) == 0) {
++                    new_value = "true";
++                }
+                 if (it == properties->end()) {
+-                    (*properties)[key] = value;
+-                } else if (it->second != value) {
++                    (*properties)[key] = new_value;
++                } else if (it->second != new_value) {
+                     LOG(WARNING) << "Overriding previous property '" << key << "':'" << it->second
+                                  << "' with new value '" << value << "'";
+-                    it->second = value;
+-                }
++                    if(strcmp("ro.apex.updatable", key) == 0) {
++                        LOG(WARNING) << "... Ignored apex by kernel version";
++                    } else if(strstr(key, "adb") || strstr(key, "secure") || strstr(key, "ro.logd.kernel")) {
++                        LOG(WARNING) << "... Ignored";
++                    } else {
++                        it->second = new_value;
++                    }
++		}
+             } else {
+                 LOG(ERROR) << "Do not have permissions to set '" << key << "' to '" << value
+                            << "' in property file '" << filename << "': " << error;
+diff --git a/init/reboot_utils.cpp b/init/reboot_utils.cpp
+index 85a707bfdb5182493be26e35876c254e53e71e2d..84a729850e0c2c7c9e8dd91d24717298351843fb 100644
+--- a/init/reboot_utils.cpp
++++ b/init/reboot_utils.cpp
+@@ -37,7 +37,7 @@
+ namespace android {
+ namespace init {
+ 
+-[[clang::no_destroy]] static std::string init_fatal_reboot_target = "bootloader";
++[[clang::no_destroy]] static std::string init_fatal_reboot_target = "recovery";
+ static bool init_fatal_panic = false;
+ 
+ // this needs to read the /proc/* files directly because it is called before
+diff --git a/init/selinux.cpp b/init/selinux.cpp
+index 93f6312a7b40756ed95152469000fb75c8072768..4b75bf7199a18e47395e2123fff6fa28f0398354 100644
+--- a/init/selinux.cpp
++++ b/init/selinux.cpp
+@@ -58,7 +58,11 @@
+ #include <stdlib.h>
+ #include <sys/mount.h>
+ #include <sys/wait.h>
++#include <sys/utsname.h>
+ #include <unistd.h>
++#include <fcntl.h>
++#include <strings.h>
++#include <sys/sysmacros.h>
+ 
+ #include <android-base/chrono_utils.h>
+ #include <android-base/file.h>
+@@ -76,6 +80,9 @@
+ #include <libgsi/libgsi.h>
+ #include <libsnapshot/snapshot.h>
+ #include <selinux/android.h>
++#include <sys/mount.h>
++#include <libfiemap/image_manager.h>
++#include <liblp/partition_opener.h>
+ 
+ #include "block_dev_initializer.h"
+ #include "debug_ramdisk.h"
+@@ -83,6 +90,7 @@
+ #include "second_stage_resources.h"
+ #include "snapuserd_transition.h"
+ #include "util.h"
++#include "switch_root.h"
+ 
+ using namespace std::string_literals;
+ 
+@@ -91,6 +99,7 @@ using android::base::Timer;
+ using android::base::unique_fd;
+ using android::fs_mgr::AvbHandle;
+ using android::snapshot::SnapshotManager;
++using android::fiemap::IImageManager;
+ 
+ namespace android {
+ namespace init {
+@@ -225,6 +234,91 @@ struct PolicyFile {
+     std::string path;
+ };
+ 
++// Detect kernel major.minor.  Returns true if strictly below the requested
++// version.  Used to cap the policydb version passed to secilc on legacy
++// kernels that lack the ioctl extended-permission (xperms) backport.
++bool KernelOlderThan(unsigned want_major, unsigned want_minor) {
++    struct utsname u;
++    if (uname(&u) != 0) return false;
++    unsigned major = 0, minor = 0;
++    if (sscanf(u.release, "%u.%u", &major, &minor) != 2) return false;
++    if (major < want_major) return true;
++    if (major == want_major && minor < want_minor) return true;
++    return false;
++}
++
++// Strip xperms CIL statements from a file.  When secilc is invoked
++// with -c 29 it still fails if the CIL input contains
++// allowx / auditallowx / dontauditx / neverallowx
++// statements, because libsepol refuses to write AVTAB_XPERMS entries
++// at policydb version < 30.  This function removes all such
++// statements (both single-line and multi-line) from the CIL source
++// so secilc never encounters them.  Returns false on I/O error.
++bool StripXpermsCil(const std::string& src_path, const std::string& dst_path,
++                    int* stripped_count) {
++    std::string content;
++    if (!android::base::ReadFileToString(src_path, &content)) return false;
++    std::string result;
++    result.reserve(content.size());
++    *stripped_count = 0;
++    size_t pos = 0;
++    while (pos < content.size()) {
++        // Copy leading whitespace as-is
++        while (pos < content.size() &&
++               (content[pos] == ' ' || content[pos] == '\t' ||
++                content[pos] == '\n' || content[pos] == '\r')) {
++            result += content[pos];
++            pos++;
++        }
++        if (pos >= content.size()) break;
++        // Check for xperms statement start.  CIL uses allowx/auditallowx/
++        // dontauditx/neverallowx (NOT allowxperm/auditallowxperm/etc).
++        static const struct {
++            const char* kw;
++            size_t len;
++        } xperms_kw[] = {
++                {"(allowx ", 8},      {"(allowx\t", 8},
++                {"(auditallowx ", 14}, {"(auditallowx\t", 14},
++                {"(dontauditx ", 13},  {"(dontauditx\t", 13},
++                {"(neverallowx ", 14}, {"(neverallowx\t", 14},
++        };
++
++        bool is_xperm = false;
++        for (const auto& kw : xperms_kw) {
++            if (content.compare(pos, kw.len, kw.kw) == 0) {
++                is_xperm = true;
++                break;
++            }
++        }
++
++        if (!is_xperm) {
++            result += content[pos];
++            pos++;
++            continue;
++        }
++
++        // Skip the entire xperms statement by tracking paren depth
++        int depth = 0;
++        while (pos < content.size()) {
++            if (content[pos] == '(') depth++;
++            if (content[pos] == ')') {
++                depth--;
++                if (depth == 0) {
++                    pos++;  // skip the closing ')'
++                    break;
++                }
++            }
++            pos++;
++        }
++        (*stripped_count)++;
++
++        // Skip trailing newline
++        if (pos < content.size() && content[pos] == '\n') pos++;
++    }
++
++    return android::base::WriteStringToFile(result, dst_path);
++}
++
+ bool OpenSplitPolicy(PolicyFile* policy_file) {
+     // IMPLEMENTATION NOTE: Split policy consists of three or more CIL files:
+     // * platform -- policy needed due to logic contained in the system image,
+@@ -327,7 +421,36 @@ bool OpenSplitPolicy(PolicyFile* policy_file) {
+     if (access(odm_policy_cil_file.c_str(), F_OK) == -1) {
+         odm_policy_cil_file.clear();
+     }
+-    const std::string version_as_string = std::to_string(SEPOLICY_VERSION);
++    // Many vendor kernels lack the ioctl extended-permission (xperms)
++    // backport even when they report version >= 4.9.  Policies compiled
++    // at policydb version >= 30 contain AVTAB_XPERMS_ALLOWED entries that
++    // such kernels cannot parse, causing security_load_policy() to fail
++    // with EINVAL.  Additionally, secilc -c 29 still fails if the CIL
++    // input contains xperms statements because libsepol refuses to write
++    // them at version < 30.  Cap the version to 29 AND strip xperms CIL
++    // rules on affected kernels.
++    unsigned int effective_version = SEPOLICY_VERSION;
++    // Conservative: assume kernels < 5.4 lack xperms unless explicitly
++    // opted in.  4.9-5.4 vendor kernels are widely known to miss the
++    // backport.
++    bool kernel_lacks_xperms = KernelOlderThan(5, 4);
++    if (kernel_lacks_xperms && !KernelOlderThan(4, 9)) {
++        // 4.9-5.4 range: allow opt-in for kernels known to have xperms
++        const char* prop = getenv("ro.boot.selinux_xperms_supported");
++        if (prop && prop[0] == '1') kernel_lacks_xperms = false;
++    }
++    if (!kernel_lacks_xperms) {
++        // 5.4+: allow opt-out for broken kernels
++        const char* prop = getenv("ro.boot.selinux_no_xperms");
++        if (prop && prop[0] == '1') kernel_lacks_xperms = true;
++    }
++
++    if (kernel_lacks_xperms && effective_version > 29) {
++        LOG(WARNING) << "SELinux: capping policy version from " << effective_version
++                     << " to 29 for kernel lacking xperms support";
++        effective_version = 29;
++    }
++    const std::string version_as_string = std::to_string(effective_version);
+ 
+     std::vector<std::string> genfs_cil_files;
+ 
+@@ -341,10 +464,67 @@ bool OpenSplitPolicy(PolicyFile* policy_file) {
+         LOG(INFO) << "Using " << genfs_cil_file << " for genfs labels";
+     }
+ 
++    // Shadow the constexpr plat_policy_cil_file and the optional
++    // userdebug policy path with mutable strings so we can redirect
++    // secilc to xperms-stripped copies on affected kernels.
++    std::string effective_plat_policy = plat_policy_cil_file;
++    std::string effective_userdebug_policy;
++    if (use_userdebug_policy) effective_userdebug_policy = *userdebug_plat_sepolicy;
++
++    if (kernel_lacks_xperms) {
++        char cil_tmpdir[] = "/dev/selinux-cil.XXXXXX";
++        if (mkdtemp(cil_tmpdir) == nullptr) {
++            PLOG(ERROR) << "Failed to create temp dir for xperms-stripped CIL";
++            return false;
++        }
++
++        int total_stripped = 0;
++        int idx = 0;
++
++        auto strip = [&](std::string& path) {
++            if (path.empty()) return;
++            std::string dst = std::string(cil_tmpdir) + "/" + std::to_string(idx++) + ".cil";
++            int stripped = 0;
++            if (StripXpermsCil(path, dst, &stripped)) {
++                if (stripped > 0) {
++                    LOG(INFO) << "SELinux: stripped " << stripped
++                              << " xperms rules from " << path;
++                    path = dst;
++                    total_stripped += stripped;
++                }
++            } else {
++                LOG(WARNING) << "SELinux: failed to strip xperms from " << path
++                             << "; using original file";
++            }
++        };
++
++        strip(effective_plat_policy);
++        if (use_userdebug_policy) strip(effective_userdebug_policy);
++        strip(plat_mapping_file);
++        strip(plat_compat_cil_file);
++        strip(system_ext_policy_cil_file);
++        strip(system_ext_mapping_file);
++        strip(system_ext_compat_cil_file);
++        strip(product_policy_cil_file);
++        strip(product_mapping_file);
++        strip(vendor_policy_cil_file);
++        strip(plat_pub_versioned_cil_file);
++        strip(odm_policy_cil_file);
++        strip(genfs_cil_file);
++
++        if (total_stripped > 0) {
++            LOG(WARNING) << "SELinux: stripped " << total_stripped
++                         << " total xperms CIL rules for kernel lacking xperms";
++        } else {
++            LOG(INFO) << "SELinux: no xperms CIL rules found to strip";
++            rmdir(cil_tmpdir);
++        }
++    }
++
+     // clang-format off
+     std::vector<const char*> compile_args {
+         "/system/bin/secilc",
+-        use_userdebug_policy ? *userdebug_plat_sepolicy : plat_policy_cil_file,
++        use_userdebug_policy ? effective_userdebug_policy.c_str() : effective_plat_policy.c_str(),
+         "-m", "-M", "true", "-G", "-N",
+         "-c", version_as_string.c_str(),
+         plat_mapping_file.c_str(),
+@@ -667,6 +847,60 @@ void LoadSelinuxPolicyMicrodroid() {
+     LoadSelinuxPolicy(policy);
+ }
+ 
++static void setupPhhOta() {
++	setenv("PHH_STEP2", (char*)"1", 1);
++	if(getenv("PHH_OTA")) return;
++	setenv("PHH_STEP3", (char*)"1", 1);
++
++	std::string phh_ota;
++	if(!base::ReadFileToString("/metadata/phh/img", &phh_ota)) return;
++	const char *slot = "a";
++	if(phh_ota.c_str()[0] == 'b')
++		slot = "b";
++	setenv("PHH_OTA_SLOT", (char*)slot, 1);
++	setenv("PHH_STEP4", (char*)"1", 1);
++
++	std::string imageNameStr = "system_otaphh_"s + slot;
++
++	BlockDevInitializer block_dev_init;
++	block_dev_init.InitDeviceMapper();
++	block_dev_init.InitDevices({"userdata"});
++
++	auto images = IImageManager::Open("phh", 0ms);
++	std::string blockDev;
++	android::fs_mgr::PartitionOpener opener;
++	if(!images->MapImageWithDeviceMapper(opener, imageNameStr, &blockDev)) return;
++
++	// For some reason, I can't get block_dev_init to find system_otaphh_X, so construct it ourselves
++	int major = atoi(blockDev.c_str());
++	const char *minorStr = strstr(blockDev.c_str(), ":")+1;
++	int minor = atoi(minorStr);
++	int eee = mknod("/dev/root-otaphh", 0644 | S_IFBLK, makedev(major, minor));
++
++	base::WriteStringToFile("phh mknod returned " + std::to_string(eee) + " of " + std::to_string(major) + " " + std::to_string(minor), "/dev/kmsg");
++	setenv("PHH_STEP5", (char*)"1", 1);
++
++	umount2("/debug_ramdisk", 0);
++	umount2("/debug_ramdisk", MNT_DETACH);
++	int mountRes = mount("/dev/root-otaphh", "/debug_ramdisk", "ext4", MS_RDONLY, "");
++	putenv((char*)"PHH_OTA=1");
++	base::WriteStringToFile("phh_ota setup " + blockDev, "/dev/kmsg");
++	base::WriteStringToFile("phh mount returned " + std::to_string(mountRes), "/dev/kmsg");
++	base::WriteStringToFile("errno is " + std::to_string(errno), "/dev/kmsg");
++
++	if(mountRes != 0) return;
++
++	SwitchRoot("/debug_ramdisk");
++
++	const char* path = "/system/bin/init";
++	const char* args[] = {path, "selinux_setup", nullptr};
++	auto fd = open("/dev/kmsg", O_WRONLY | O_CLOEXEC);
++	dup2(fd, STDOUT_FILENO);
++	dup2(fd, STDERR_FILENO);
++	close(fd);
++	execv(path, const_cast<char**>(args));
++}
++
+ // The SELinux setup process is carefully orchestrated around snapuserd. Policy
+ // must be loaded off dynamic partitions, and during an OTA, those partitions
+ // cannot be read without snapuserd. But, with kernel-privileged snapuserd
+@@ -683,6 +917,8 @@ void LoadSelinuxPolicyMicrodroid() {
+ //
+ // After this sequence, it is safe to enable enforcing mode and continue booting.
+ void LoadSelinuxPolicyAndroid() {
++    setenv("PHH_STEP1", (char*)"1", 1);
++    setupPhhOta();
+     MountMissingSystemPartitions();
+ 
+     LOG(INFO) << "Opening SELinux policy";
+@@ -814,8 +1050,25 @@ int SetupSelinux(char** argv) {
+     // store SELabels in their xattrs, such as ext4 do not need an explicit restorecon here,
+     // but other file systems do.  In particular, this is needed for ramdisks such as the
+     // recovery image for A/B devices.
++    //
++    // On legacy devices (kernel <= 4.14) the system partition is ext4 but the kernel implicitly
++    // advertises seclabel support, so libselinux does not exclude /system from relabelling.
++    // However /system is mounted read-only, causing lsetfilecon to fail with EROFS even when the
++    // existing label is already correct.  Treat EROFS as non-fatal when the label already matches
++    // the expected value -- the file is correctly labelled and no write is needed.
+     if (selinux_android_restorecon("/system/bin/init", 0) == -1) {
+-        PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
++        if (errno == EROFS) {
++            char* ctx = nullptr;
++            if (lgetfilecon("/system/bin/init", &ctx) >= 0) {
++                LOG(WARNING) << "restorecon of /system/bin/init failed with EROFS but label is '"
++                             << ctx << "' -- continuing on read-only fs";
++                freecon(ctx);
++            } else {
++                PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
++            }
++        } else {
++            PLOG(FATAL) << "restorecon failed of /system/bin/init failed";
++        }
+     }
+ 
+     setenv(kEnvSelinuxStartedAt, std::to_string(start_time.time_since_epoch().count()).c_str(), 1);
+diff --git a/init/service.cpp b/init/service.cpp
+index dbae8a771453a544aeda26767f497339e2b3cb93..2d2b12e80b05e500efbaade8ba69d321e62d5b27 100644
+--- a/init/service.cpp
++++ b/init/service.cpp
+@@ -739,12 +739,15 @@ Result<void> Service::Start() {
+                          limit_percent_ != -1 || !limit_property_.empty();
+         errno = -createProcessGroup(uid(), pid_, use_memcg);
+         if (errno != 0) {
++            PLOG(ERROR) << "createProcessGroup(" << uid() << ", " << pid_ <<  ") failed for service '" << name_ << "'";
++#if 0
+             Result<void> result = cgroups_activated.Write(kActivatingCgroupsFailed);
+             if (!result.ok()) {
+                 return Error() << "Sending notification failed: " << result.error();
+             }
+             return Error() << "createProcessGroup(" << uid() << ", " << pid_ << ", " << use_memcg
+                            << ") failed for service '" << name_ << "': " << strerror(errno);
++#endif
+         }
+ 
+         // When the blkio controller is mounted in the v1 hierarchy, NormalIoPriority is
+diff --git a/libcutils/fs_config.cpp b/libcutils/fs_config.cpp
+index f28c897edfbdc292c399261d20cd227853bec1ce..01909816a2c3b6a6d45d66f9566e61ab4bad2c0a 100644
+--- a/libcutils/fs_config.cpp
++++ b/libcutils/fs_config.cpp
+@@ -77,7 +77,7 @@ static const struct fs_path_config android_dirs[] = {
+     { 00751, AID_ROOT,         AID_SHELL,        0, "system/bin" },
+     { 00755, AID_ROOT,         AID_ROOT,         0, "system/etc/ppp" },
+     { 00755, AID_ROOT,         AID_SHELL,        0, "system/vendor" },
+-    { 00750, AID_ROOT,         AID_SHELL,        0, "system/xbin" },
++    { 00751, AID_ROOT,         AID_SHELL,        0, "system/xbin" },
+     { 00751, AID_ROOT,         AID_SHELL,        0, "system_ext/bin" },
+     { 00751, AID_ROOT,         AID_SHELL,        0, "vendor/bin" },
+     { 00755, AID_ROOT,         AID_SHELL,        0, "vendor" },
+diff --git a/libprocessgroup/setup/cgroup_map_write.cpp b/libprocessgroup/setup/cgroup_map_write.cpp
+index 899b4e9524727256ff213e795c49e63bbeae005f..57949261ac61e44e3720ff9fe1123ee092e86dd2 100644
+--- a/libprocessgroup/setup/cgroup_map_write.cpp
++++ b/libprocessgroup/setup/cgroup_map_write.cpp
+@@ -22,12 +22,15 @@
+ #include <fcntl.h>
+ #include <grp.h>
+ #include <pwd.h>
++#include <sstream>
+ #include <sys/mount.h>
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+ 
++#include <android-base/file.h>
+ #include <android-base/logging.h>
++#include <android-base/properties.h>
+ #include <processgroup/cgroup_descriptor.h>
+ #include <processgroup/processgroup.h>
+ #include <processgroup/setup.h>
+@@ -174,7 +177,7 @@ static bool ActivateV2CgroupController(const CgroupDescriptor& descriptor) {
+ 
+     if (!Mkdir(controller->path(), descriptor.mode(), descriptor.uid(), descriptor.gid())) {
+         LOG(ERROR) << "Failed to create directory for " << controller->name() << " cgroup";
+-        return descriptor.controller()->flags() & CGROUPRC_CONTROLLER_FLAG_OPTIONAL;
++        return false;
+     }
+ 
+     return ::ActivateControllers(controller->path(), {{controller->name(), descriptor}});
+@@ -290,9 +293,86 @@ bool CgroupSetup() {
+             return true;
+         }
+ 
++        // lmkd requires the memory controller in the v1 hierarchy when using its
++        // vmpressure-based kill strategy. This happens in two cases:
++        //
++        //   1. The kernel lacks CONFIG_PSI: lmkd cannot open /proc/pressure/memory
++        //      and its PSI path fails entirely.
++        //
++        //   2. The vendor has set ro.lmk.use_minfree_levels=true or
++        //      ro.lmk.use_new_strategy=false: lmkd gates itself to the old kill
++        //      strategy, which hard-requires v1 memcg regardless of PSI support.
++        //
++        // CgroupSetup() runs as PID 1 before PropertyLoadBootDefaults() has
++        // loaded vendor properties.  GetBoolProperty() returns false for any
++        // vendor-side property at this point, so we scan the same property files
++        // that PropertyLoadBootDefaults() would load for vendor/ODM/product
++        // partitions.  Later files override earlier ones in that load order, so
++        // we scan all of them and let the last match win.
++        //
++        // In either case, if the memory controller is currently declared as v2 we
++        // fall back to mounting it as a v1 cgroup at /dev/memcg. Devices where
++        // PSI is available and the vendor has not forced use_minfree_levels are
++        // unaffected: the condition below evaluates false and the v2 path is taken.
++        if (name == "memory" && descriptor.controller()->version() == 2) {
++            const bool psi_available = access("/proc/pressure/memory", F_OK) == 0;
++
++            // scan property files from all partitions that PropertyLoadBootDefaults
++            // would read, in the same order.  the property service has not loaded
++            // these yet, so we must read the files directly.  parse line-by-line
++            // to skip comments (lines starting with #) which are common in
++            // build.prop files generated by post_process_props.py.
++            bool minfree_levels = false;
++            static const char* prop_files[] = {
++                    "/system/build.prop",
++                    "/system_ext/etc/build.prop",
++                    "/system_ext/build.prop",
++                    "/vendor/default.prop",
++                    "/vendor/build.prop",
++                    "/vendor_dlkm/etc/build.prop",
++                    "/odm_dlkm/etc/build.prop",
++                    "/odm/etc/build.prop",
++                    "/odm/build.prop",
++                    "/product/etc/build.prop",
++                    "/product/build.prop",
++            };
++            for (const char* path : prop_files) {
++                std::string contents;
++                if (!android::base::ReadFileToString(path, &contents)) continue;
++                // parse line-by-line; last non-commented value wins per file,
++                // and later files override earlier files.
++                std::istringstream stream(contents);
++                std::string line;
++                while (std::getline(stream, line)) {
++                    // strip trailing \r from files with windows line endings
++                    if (!line.empty() && line.back() == '\r') line.pop_back();
++                    if (line.empty() || line[0] == '#') continue;
++                    if (line == "ro.lmk.use_minfree_levels=true" ||
++                        line == "ro.lmk.use_new_strategy=false") {
++                        minfree_levels = true;
++                    } else if (line == "ro.lmk.use_minfree_levels=false" ||
++                               line == "ro.lmk.use_new_strategy=true") {
++                        minfree_levels = false;
++                    }
++                }
++            }
++
++            if (!psi_available || minfree_levels) {
++                LOG(WARNING) << "Mounting memory cgroup as v1 at /dev/memcg: "
++                             << (!psi_available ? "kernel lacks PSI support"
++                                                : "vendor forces old lmkd kill strategy "
++                                                  "(use_minfree_levels=true or "
++                                                  "use_new_strategy=false)");
++                descriptor = CgroupDescriptor(
++                        1, name, "/dev/memcg", descriptor.mode(), descriptor.uid(),
++                        descriptor.gid(), descriptor.controller()->flags() &
++                        ~CGROUPRC_CONTROLLER_FLAG_NEEDS_ACTIVATION, UINT32_MAX);
++            }
++        }
++
+         if (!SetupCgroup(descriptor)) {
+-            LOG(ERROR) << "Failed to setup " << name << " cgroup";
+-            return false;
++            // issue a warning and proceed with the next cgroup
++            LOG(WARNING) << "Failed to setup " << name << " cgroup";
+         }
+     }
+ 
+diff --git a/libprocessgroup/task_profiles.cpp b/libprocessgroup/task_profiles.cpp
+index 2730743639764f588e3b8d4a6841a6dad3f36353..d35322cfcef9d0dae31fe31fc720d417ae480d75 100644
+--- a/libprocessgroup/task_profiles.cpp
++++ b/libprocessgroup/task_profiles.cpp
+@@ -322,6 +322,14 @@ bool SetCgroupAction::AddTidToCgroup(pid_t tid, int fd, ResourceCacheType cache_
+         return true;
+     }
+ 
++    // ENOENT is returned when the cgroup path does not exist on vendor
++    // kernels that lack the full hierarchy expected by APEX services.
++    // Treat it as non-fatal so boot can continue with degraded cgroup
++    // support (matching the init-level fallback in service.cpp).
++    if (errno == ENOENT) {
++        return true;
++    }
++
+     const char* controller_name = controller()->name();
+     // ENOSPC is returned when cpuset cgroup that we are joining has no online cpus
+     if (errno == ENOSPC && !strcmp(controller_name, "cpuset")) {
+diff --git a/property_service/libpropertyinfoserializer/property_info_serializer.cpp b/property_service/libpropertyinfoserializer/property_info_serializer.cpp
+index 803657ab8e05696529412b45cd2aaba54a52e6aa..ecdd0be201602cce1961d49dab197370ef491a56 100644
+--- a/property_service/libpropertyinfoserializer/property_info_serializer.cpp
++++ b/property_service/libpropertyinfoserializer/property_info_serializer.cpp
+@@ -19,6 +19,7 @@
+ #include "property_info_parser/property_info_parser.h"
+ 
+ #include <set>
++#include <iostream>
+ 
+ #include "trie_builder.h"
+ #include "trie_serializer.h"
+@@ -34,7 +35,7 @@ bool BuildTrie(const std::vector<PropertyInfoEntry>& property_info,
+ 
+   for (const auto& [name, context, type, is_exact] : property_info) {
+     if (!trie_builder.AddToTrie(name, context, type, is_exact, error)) {
+-      return false;
++      std::cerr << "Failed adding " << name << " to property trie... let's hope for the best" << std::endl;
+     }
+   }
+ 
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 92dcdd0131a4cc3d41ed917389acf7fc7feca611..f9ff5427a77a9382a6e4f393fcbe420fc8447da0 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -1364,9 +1364,6 @@ on property:ro.debuggable=1
+     # Give reads to anyone for the accessibility trace folder on debug builds.
+     chmod 0775 /data/misc/a11ytrace
+ 
+-on init && property:ro.debuggable=1
+-    start console
+-
+ # Multi-Gen LRU Experiment
+ on property:persist.device_config.mglru_native.lru_gen_config=none
+   write /sys/kernel/mm/lru_gen/enabled 0
+diff --git a/rootdir/ueventd.rc b/rootdir/ueventd.rc
+index 2ff86a5e9b19f53608d407bf2dbb9a37ad4da7a6..7ed89a10e27b2ec2865e2c6a49ea3c9b5e49ad12 100644
+--- a/rootdir/ueventd.rc
++++ b/rootdir/ueventd.rc
+@@ -1,7 +1,7 @@
+ import /vendor/etc/ueventd.rc
+ import /odm/etc/ueventd.rc
+ 
+-firmware_directories /etc/firmware/ /odm/firmware/ /vendor/firmware/ /firmware/image/
++firmware_directories /etc/firmware/ /odm/firmware/ /vendor/firmware/ /firmware/image/ /vendor/firmware_mnt/image/
+ uevent_socket_rcvbuf_size 16M
+ 
+ subsystem graphics
+@@ -63,7 +63,7 @@ subsystem vfio
+ 
+ # these should not be world writable
+ /dev/uhid                 0660   uhid       uhid
+-/dev/uinput               0660   uhid       uhid
++/dev/uinput               0666   uhid       uhid
+ /dev/rtc0                 0640   system     system
+ /dev/tty0                 0660   root       system
+ /dev/graphics/*           0660   root       graphics
+diff --git a/sdcard/sdcard.cpp b/sdcard/sdcard.cpp
+index 622de5b7a144b6969ebbde98ca7f6aceb1ffb5cd..e580190e9d4b6c3862f81bb78d6d910ed3124a67 100644
+--- a/sdcard/sdcard.cpp
++++ b/sdcard/sdcard.cpp
+@@ -32,6 +32,7 @@
+ #include <android-base/file.h>
+ #include <android-base/logging.h>
+ #include <android-base/macros.h>
++#include <android-base/properties.h>
+ #include <android-base/stringprintf.h>
+ #include <android-base/strings.h>
+ 
+@@ -103,11 +104,12 @@ static bool sdcardfs_setup(const std::string& source_path, const std::string& de
+                            mode_t mask, bool derive_gid, bool default_normal, bool unshared_obb,
+                            bool use_esdfs) {
+     // Add new options at the end of the vector.
++    int vndk = android::base::GetIntProperty<int>("ro.vndk.version", 29);
+     std::vector<std::string> new_opts_list;
+     if (multi_user) new_opts_list.push_back("multiuser,");
+-    if (derive_gid) new_opts_list.push_back("derive_gid,");
+-    if (default_normal) new_opts_list.push_back("default_normal,");
+-    if (unshared_obb) new_opts_list.push_back("unshared_obb,");
++    if (derive_gid && vndk >= 27) new_opts_list.push_back("derive_gid,");
++    if (default_normal && vndk >= 28) new_opts_list.push_back("default_normal,");
++    if (unshared_obb && vndk >= 29) new_opts_list.push_back("unshared_obb,");
+     // Try several attempts, each time with one less option, to gracefully
+     // handle older kernels that aren't updated yet.
+     for (int i = 0; i <= new_opts_list.size(); ++i) {
+diff --git a/watchdogd/watchdogd.cpp b/watchdogd/watchdogd.cpp
+index 5dc41e6b8af8fec7a1caa9e51e0a42f3c3ab20b4..69abb4e2b63fc000e2245f6feae3346d1e0bc36c 100644
+--- a/watchdogd/watchdogd.cpp
++++ b/watchdogd/watchdogd.cpp
+@@ -20,12 +20,15 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <sys/stat.h>
+ 
+ #include <android-base/logging.h>
+ 
+ #define DEV_NAME "/dev/watchdog"
++#define DEV_NAME2 "/dev/watchdog1"
+ 
+ int main(int argc, char** argv) {
++    struct stat st_buf;
+     android::base::InitLogging(argv, &android::base::KernelLogger);
+ 
+     int interval = 10;
+@@ -42,6 +45,13 @@ int main(int argc, char** argv) {
+         return 1;
+     }
+ 
++    int fd2 = open(DEV_NAME2, O_RDWR | O_CLOEXEC);
++    fstat(fd2, &st_buf);
++    if ((st_buf.st_mode & S_IFMT) != S_IFCHR) {
++        close(fd2);
++        fd2 = -1;
++    }
++
+     int timeout = interval + margin;
+     int ret = ioctl(fd, WDIOC_SETTIMEOUT, &timeout);
+     if (ret) {
+@@ -61,8 +71,31 @@ int main(int argc, char** argv) {
+         }
+     }
+ 
++    if(fd2 >= 0) {
++        int interval2 = interval;
++        ret = ioctl(fd2, WDIOC_SETTIMEOUT, &timeout);
++        if (ret) {
++            PLOG(ERROR) << "Failed to set2 timeout to " << timeout;
++            ret = ioctl(fd, WDIOC_GETTIMEOUT, &timeout);
++            if (ret) {
++                PLOG(ERROR) << "Failed to get timeout";
++            } else {
++                if (timeout > margin) {
++                    interval2 = timeout - margin;
++                } else {
++                    interval2 = 1;
++                }
++                LOG(WARNING) << "Adjusted interval to timeout returned by driver: "
++                             << "timeout " << timeout << ", interval " << interval2 << ", margin "
++                             << margin;
++            }
++        }
++        if(interval2 < interval) interval = interval2;
++    }
++
+     while (true) {
+         write(fd, "", 1);
++        if (fd2 >= 0) write(fd2, "", 1);
+         sleep(interval);
+     }
+ }

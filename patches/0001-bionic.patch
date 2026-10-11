@@ -1,0 +1,263 @@
+diff --git a/libc/bionic/sys_epoll.cpp b/libc/bionic/sys_epoll.cpp
+index be97818da9dd1010dd46c0de1c9313bed30b14ec..d3d841e8924fb4a78b685cb66a65e437f3bd329d 100644
+--- a/libc/bionic/sys_epoll.cpp
++++ b/libc/bionic/sys_epoll.cpp
+@@ -80,7 +80,17 @@ int epoll_pwait2_64(int fd, epoll_event* events, int max_events, const timespec*
+     kts_ptr = &kts;
+   }
+ #endif
+-  return __epoll_pwait2(fd, events, max_events, kts_ptr, ss, sizeof(*ss));
++  int result = __epoll_pwait2(fd, events, max_events, kts_ptr, ss, sizeof(*ss));
++  if (result == -1 && errno == ENOSYS) {
++    // Fall back to epoll_pwait for kernels that don't support epoll_pwait2 (< 5.11).
++    // The only loss is timeout precision (milliseconds instead of nanoseconds).
++    int timeout_ms = -1;
++    if (timeout) {
++      timeout_ms = static_cast<int>(timeout->tv_sec * 1000 + timeout->tv_nsec / 1000000);
++    }
++    result = __epoll_pwait(fd, events, max_events, timeout_ms, ss, sizeof(*ss));
++  }
++  return result;
+ }
+ 
+ int epoll_wait(int fd, struct epoll_event* events, int max_events, int timeout) {
+diff --git a/libc/bionic/system_property_api.cpp b/libc/bionic/system_property_api.cpp
+index ed30fc2a6a688f9a6364c29c57b05d92c2813a75..21cdd9299236fc34468a527573512778c4969467 100644
+--- a/libc/bionic/system_property_api.cpp
++++ b/libc/bionic/system_property_api.cpp
+@@ -29,6 +29,7 @@
+ #include <sys/system_properties.h>
+ 
+ #include <async_safe/CHECK.h>
++#include <async_safe/log.h>
+ #include <system_properties/prop_area.h>
+ #include <system_properties/system_properties.h>
+ 
+@@ -56,7 +57,22 @@ int __system_property_set_filename(const char*) {
+ __BIONIC_WEAK_FOR_NATIVE_BRIDGE
+ int __system_property_area_init() {
+   bool fsetxattr_fail = false;
+-  return system_properties.AreaInit(PROP_DIRNAME, &fsetxattr_fail) && !fsetxattr_fail ? 0 : -1;
++  if (!system_properties.AreaInit(PROP_DIRNAME, &fsetxattr_fail)) {
++    // on old vendor kernels (e.g. 4.14) fsetxattr failures inside AreaInit
++    // can cascade: context_node Open() succeeds but sets fsetxattr_failed,
++    // which causes ContextsSerialized::Initialize to report open_failed and
++    // return false.  the property system may still be partially functional
++    // -- try to continue rather than letting init abort into recovery.
++    async_safe_format_log(ANDROID_LOG_ERROR, "libc",
++                          "property area init AreaInit failed, "
++                          "continuing anyway to avoid boot loop");
++  }
++  if (fsetxattr_fail) {
++    async_safe_format_log(ANDROID_LOG_WARN, "libc",
++                          "fsetxattr failed during property area init, "
++                          "continuing without SELinux property labels");
++  }
++  return 0;
+ }
+ 
+ __BIONIC_WEAK_FOR_NATIVE_BRIDGE
+diff --git a/libc/system_properties/system_properties.cpp b/libc/system_properties/system_properties.cpp
+index 6924ff1459c9646eebb881735cad06c0450e8ff4..b5af20dd1456ce6db18f27e66c87f20b00aca85c 100644
+--- a/libc/system_properties/system_properties.cpp
++++ b/libc/system_properties/system_properties.cpp
+@@ -36,6 +36,8 @@
+ #include <sys/stat.h>
+ #include <sys/types.h>
+ #include <unistd.h>
++#include <string.h>
++#include <fcntl.h>
+ 
+ #include <new>
+ 
+@@ -53,6 +55,85 @@
+ #define SERIAL_VALUE_LEN(serial) ((serial) >> 24)
+ #define APPCOMPAT_PREFIX "ro.appcompat_override."
+ 
++static char comm[128];
++static bool self_ok = false;
++static char comm_override[PROP_VALUE_MAX];
++
++static void read_self() {
++  //NB: Not atomic, but should be good enough, there is no possible corruption from concurrency
++  if(self_ok) return;
++  self_ok = true;
++
++  char cmdline[128];
++  int fd = open("/proc/self/cmdline", O_RDONLY);
++  if(fd<0) return;
++  read(fd, cmdline, sizeof(cmdline)-1);
++  for(unsigned i=0; i<sizeof(cmdline); i++)
++    if(cmdline[i] == '\n')
++      cmdline[i] = 0;
++  close(fd);
++
++  // Truncate to last /, we don't want `/` in the prop
++  const char *c = strrchr(cmdline, '/');
++  if (c != nullptr) {
++      c = c+1;
++  } else {
++      c = cmdline;
++  }
++  // Take only the last 16 bytes (prop names max is 32)
++  if(strlen(c) < 15) {
++      strcpy(comm, c);
++  } else {
++      strcpy(comm, c + strlen(c) - 15);
++  }
++
++
++  //That's calling ourselves but that's fine because we already have self_ok = true
++  char propName[PROP_NAME_MAX];
++  memset(propName, 0, PROP_NAME_MAX);
++  strncpy(propName, "debug.phh.props.", PROP_NAME_MAX - 1);
++  strncat(propName, comm, PROP_NAME_MAX - strlen(propName) - 1);
++
++  //async_safe_format_log(ANDROID_LOG_WARN, "libc", "Reading debug prop %s", propName);
++  __system_property_get(propName, comm_override);
++}
++
++static const char* redirectToProp(const char *name) {
++  read_self();
++  /*if(strstr(name, "ro.keymaster") != nullptr || strstr(name, "security_patch") != nullptr || strstr(name, "release") != nullptr) {
++    async_safe_format_log(ANDROID_LOG_WARN, "libc", "Process/comm %s/%s is reading %s", comm, comm_override, name);
++  }*/
++  if(strcmp(comm_override, "vendor") == 0) {
++    if(strcmp(name, "ro.product.device") == 0) {
++      return "ro.product.vendor.device";
++    }
++    if(strcmp(name, "ro.product.manufacturer") == 0) {
++      return "ro.product.vendor.manufacturer";
++    }
++  }
++  if(strcmp(comm_override, "keymaster") == 0) {
++    if(strcmp(name, "ro.product.model") == 0) {
++      return "ro.keymaster.mod";
++    }
++    if(strcmp(name, "ro.product.brand") == 0) {
++      return "ro.keymaster.brn";
++    }
++    if(strcmp(name, "ro.build.version.release") == 0) {
++      return "ro.keymaster.xxx.release";
++    }
++    if(strcmp(name, "ro.build.version.security_patch") == 0) {
++      return "ro.keymaster.xxx.security_patch";
++    }
++    if(strcmp(name, "ro.boot.vbmeta.device_state") == 0) {
++      return "ro.keymaster.xxx.vbmeta_state";
++    }
++    if(strcmp(name, "ro.boot.verifiedbootstate") == 0) {
++      return "ro.keymaster.xxx.verifiedbootstate";
++    }
++  }
++  return name;
++}
++
+ static bool is_dir(const char* pathname) {
+   struct stat info;
+   if (stat(pathname, &info) == -1) {
+@@ -124,10 +205,23 @@ bool SystemProperties::AreaInit(const char* filename, bool* fsetxattr_failed,
+   appcompat_override_contexts_ = nullptr;
+   if (access(appcompat_filename_.c_str(), F_OK) != -1) {
+     auto* appcompat_contexts = new (appcompat_override_contexts_data_) ContextsSerialized();
+-    if (!appcompat_contexts->Initialize(true, appcompat_filename_.c_str(), fsetxattr_failed,
+-                                        load_default_path)) {
+-      // The appcompat folder exists, but initializing it failed
+-      return false;
++    // on old vendor kernels (e.g. 4.14 with VNDK 30) fsetxattr on tmpfs may
++    // fail with ENOTSUP for the appcompat_override property area because the
++    // SELinux context doesn't exist in the vendor's policy.  this is non-fatal
++    // -- all callsites already null-check appcompat_override_contexts_.
++    bool appcompat_fsetxattr_failed = false;
++    if (!appcompat_contexts->Initialize(true, appcompat_filename_.c_str(),
++                                        &appcompat_fsetxattr_failed, load_default_path)) {
++      // the appcompat folder exists, but initialising it failed -- continue
++      // without appcompat override support rather than aborting init
++      async_safe_format_log(ANDROID_LOG_WARN, "libc",
++                            "Failed to initialise appcompat_override property area, continuing without it");
++    } else if (appcompat_fsetxattr_failed) {
++      // initialisation succeeded but SELinux labelling failed -- still usable
++      // but don't propagate the failure to the caller as fatal
++      async_safe_format_log(ANDROID_LOG_WARN, "libc",
++                            "appcompat_override fsetxattr failed, continuing without SELinux labels");
++      appcompat_override_contexts_ = appcompat_contexts;
+     } else {
+       appcompat_override_contexts_ = appcompat_contexts;
+     }
+@@ -160,17 +254,26 @@ uint32_t SystemProperties::AreaSerial() {
+ }
+ 
+ const prop_info* SystemProperties::Find(const char* name) {
++  const char* newName = redirectToProp(name);
++
+   if (!initialized_) {
+     return nullptr;
+   }
+ 
+-  prop_area* pa = contexts_->GetPropAreaForName(name);
++  prop_area* pa = contexts_->GetPropAreaForName(newName);
+   if (!pa) {
+     async_safe_format_log(ANDROID_LOG_WARN, "libc", "Access denied finding property \"%s\"", name);
+     return nullptr;
+   }
+ 
+-  return pa->find(name);
++  const prop_info* pi = pa->find(newName);
++  if (pi == nullptr && newName != name) {
++    pa = contexts_->GetPropAreaForName(name);
++    if (pa) {
++      pi = pa->find(name);
++    }
++  }
++  return pi;
+ }
+ 
+ static bool is_appcompat_override(const char* name) {
+diff --git a/libc/upstream-openbsd/android/include/arc4random.h b/libc/upstream-openbsd/android/include/arc4random.h
+index 1940398ba85606f19e022aa5844f51ef3679e33c..2449c6ec37abb30f1d625cfd6fec675110316bc2 100644
+--- a/libc/upstream-openbsd/android/include/arc4random.h
++++ b/libc/upstream-openbsd/android/include/arc4random.h
+@@ -18,6 +18,7 @@
+  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
+ 
++#include <errno.h>
+ #include <pthread.h>
+ #include <sys/mman.h>
+ #include <sys/prctl.h>
+@@ -59,8 +60,10 @@ static inline int _rs_allocate(struct _rs** rsp, struct _rsx** rsxp) {
+     async_safe_fatal("arc4random data allocation failed: %m");
+   }
+ 
+-  // Equivalent to OpenBSD's minherit(MAP_INHERIT_ZERO).
+-  if (madvise(p, size, MADV_WIPEONFORK) == -1) {
++  // MADV_WIPEONFORK requires linux 4.14+. on pre-4.14 vendor kernels the call
++  // returns EINVAL; tolerate that gracefully so these devices can still boot.
++  // the trade-off is that arc4random state is not zeroed on fork on such kernels.
++  if (madvise(p, size, MADV_WIPEONFORK) == -1 && errno != EINVAL) {
+     async_safe_fatal("arc4random data MADV_WIPEONFORK failed: %m");
+   }
+ 
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index 29e67ce3a9e65fa4eacda2e107b78895f6e58bab..13be81d9d16669a7ed593c6c4ac22ac1113d44f4 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -98,7 +98,6 @@ static uint64_t g_module_unload_counter = 0;
+ static const char* const kLdConfigArchFilePath = "/system/etc/ld.config." ABI_STRING ".txt";
+ 
+ static const char* const kLdConfigFilePath = "/system/etc/ld.config.txt";
+-static const char* const kLdConfigVndkLiteFilePath = "/system/etc/ld.config.vndk_lite.txt";
+ 
+ static const char* const kLdGeneratedConfigFilePath = "/linkerconfig/ld.config.txt";
+ 
+@@ -3572,10 +3571,6 @@ static std::string get_ld_config_file_apex_path(const char* executable_path) {
+ }
+ 
+ static std::string get_ld_config_file_vndk_path() {
+-  if (android::base::GetBoolProperty("ro.vndk.lite", false)) {
+-    return kLdConfigVndkLiteFilePath;
+-  }
+-
+   std::string ld_config_file_vndk = kLdConfigFilePath;
+   size_t insert_pos = ld_config_file_vndk.find_last_of('.');
+   if (insert_pos == std::string::npos) {

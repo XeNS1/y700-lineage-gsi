@@ -1,0 +1,123 @@
+diff --git a/FsCrypt.cpp b/FsCrypt.cpp
+index d0ae5f832ca4907b6f4326fc63f9c7d72da3aac1..a00cb1e5534b4612f96b919c377a261f4f4be266 100644
+--- a/FsCrypt.cpp
++++ b/FsCrypt.cpp
+@@ -437,6 +437,7 @@ static bool prepare_dir_with_policy(const std::string& dir, mode_t mode, uid_t u
+ static bool destroy_dir(const std::string& dir) {
+     LOG(DEBUG) << "Destroying: " << dir;
+     if (rmdir(dir.c_str()) != 0 && errno != ENOENT) {
++        if(unlink(dir.c_str()) == 0) return true;
+         PLOG(ERROR) << "Failed to destroy " << dir;
+         return false;
+     }
+diff --git a/VolumeManager.cpp b/VolumeManager.cpp
+index 2b42e2544761dccf1966244ca544644689887ef6..33efa753c6ac5019a708503813fa3190bba13d3a 100644
+--- a/VolumeManager.cpp
++++ b/VolumeManager.cpp
+@@ -1074,6 +1074,7 @@ int VolumeManager::unmountAll() {
+     while ((mentry = getmntent(fp)) != NULL) {
+         auto test = std::string(mentry->mnt_dir);
+         if ((StartsWith(test, "/mnt/") &&
++             !StartsWith(test, "/mnt/phh") &&
+ #ifdef __ANDROID_DEBUGGABLE__
+              !StartsWith(test, "/mnt/scratch") &&
+ #endif
+diff --git a/fs/Exfat.cpp b/fs/Exfat.cpp
+index 64441784889e985d76d5357975de81e2de1f4d3d..e2c47136dd6da5d3f5420f227ef2a3e9d7214931 100644
+--- a/fs/Exfat.cpp
++++ b/fs/Exfat.cpp
+@@ -35,7 +35,9 @@ static const char* kFsckPath = "/system/bin/fsck.exfat";
+ 
+ bool IsSupported() {
+     return access(kMkfsPath, X_OK) == 0 && access(kFsckPath, X_OK) == 0 &&
+-           IsFilesystemSupported("exfat");
++           (IsFilesystemSupported("exfat") ||
++            IsFilesystemSupported("texfat") ||
++            IsFilesystemSupported("sdfat"));
+ }
+ 
+ status_t Check(const std::string& source) {
+@@ -64,13 +66,16 @@ status_t DoMount(const std::string& source, const std::string& target, int owner
+     auto mountData = android::base::StringPrintf("uid=%d,gid=%d,fmask=%o,dmask=%o", ownerUid,
+                                                  ownerGid, permMask, permMask);
+ 
+-    if (mount(source.c_str(), target.c_str(), "exfat", mountFlags, mountData.c_str()) == 0) {
++    const char* fs = "exfat";
++    if (IsFilesystemSupported("sdfat")) fs = "sdfat";
++    if (IsFilesystemSupported("texfat")) fs = "texfat";
++    if (mount(source.c_str(), target.c_str(), fs, mountFlags, mountData.c_str()) == 0) {
+         return 0;
+     }
+ 
+     PLOG(ERROR) << "Mount failed; attempting read-only";
+     mountFlags |= MS_RDONLY;
+-    if (mount(source.c_str(), target.c_str(), "exfat", mountFlags, mountData.c_str()) == 0) {
++    if (mount(source.c_str(), target.c_str(), fs, mountFlags, mountData.c_str()) == 0) {
+         return 0;
+     }
+ 
+diff --git a/main.cpp b/main.cpp
+index 8956cd56f17d65667fe982dc859e0629bb966795..ef290aa126bc8d2de8fbed83b50c7b9016b47858 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -245,7 +245,7 @@ static int process_config(VolumeManager* vm, VoldConfigs* configs) {
+     }
+ 
+     /* Loop through entries looking for ones that vold manages */
+-    configs->has_adoptable = false;
++    configs->has_adoptable = true;
+     configs->has_quota = false;
+     configs->has_reserved = false;
+     configs->has_compress = false;
+diff --git a/model/EmulatedVolume.cpp b/model/EmulatedVolume.cpp
+index 2df35cb32150b78ac6323c306b57a05e0f8aaf50..5ea7e57a0f1e88b4fff7c4d0c2861bd369f97c33 100644
+--- a/model/EmulatedVolume.cpp
++++ b/model/EmulatedVolume.cpp
+@@ -54,6 +54,14 @@ EmulatedVolume::EmulatedVolume(const std::string& rawPath, int userId)
+     mLabel = "emulated";
+     mFuseMounted = false;
+     mUseSdcardFs = IsSdcardfsUsed();
++    // When FUSE BPF is unavailable, the legacy FUSE daemon path in
++    // Android 16 QPR2 does not correctly handle writes -- /sdcard/ will be
++    // unreliable until sdcardfs is used as a fallback.  Force sdcardfs if
++    // the kernel supports it; if not, legacy FUSE is kept as a last resort.
++    if (!mUseSdcardFs && !IsFuseBpfEnabled() && IsFilesystemSupported("sdcardfs")) {
++        LOG(INFO) << "FUSE BPF unavailable and sdcardfs supported; forcing sdcardfs";
++        mUseSdcardFs = true;
++    }
+     mAppDataIsolationEnabled = base::GetBoolProperty(kVoldAppDataIsolationEnabled, false);
+ }
+ 
+@@ -65,6 +73,10 @@ EmulatedVolume::EmulatedVolume(const std::string& rawPath, dev_t device, const s
+     mLabel = fsUuid;
+     mFuseMounted = false;
+     mUseSdcardFs = IsSdcardfsUsed();
++    if (!mUseSdcardFs && !IsFuseBpfEnabled() && IsFilesystemSupported("sdcardfs")) {
++        LOG(INFO) << "FUSE BPF unavailable and sdcardfs supported; forcing sdcardfs";
++        mUseSdcardFs = true;
++    }
+     mAppDataIsolationEnabled = base::GetBoolProperty(kVoldAppDataIsolationEnabled, false);
+ }
+ 
+diff --git a/vold_prepare_subdirs.cpp b/vold_prepare_subdirs.cpp
+index ca8e3f6af6f5752d0ccc1708a7b72c26f5706693..32ff69fdbca3c72456abd0658e00d6c367190970 100644
+--- a/vold_prepare_subdirs.cpp
++++ b/vold_prepare_subdirs.cpp
+@@ -208,7 +208,7 @@ static bool prepare_subdirs(const std::string& volume_uuid, int user_id, int fla
+             }
+             auto facedata_path = vendor_de_path + "/facedata";
+             if (!prepare_dir(sehandle, 0700, AID_SYSTEM, AID_SYSTEM, facedata_path)) {
+-                return false;
++                LOG(ERROR) << "Failed preparing folder for de facedata";
+             }
+         }
+     }
+@@ -253,7 +253,7 @@ static bool prepare_subdirs(const std::string& volume_uuid, int user_id, int fla
+             auto vendor_ce_path = android::vold::BuildDataVendorCePath(user_id);
+             auto facedata_path = vendor_ce_path + "/facedata";
+             if (!prepare_dir(sehandle, 0700, AID_SYSTEM, AID_SYSTEM, facedata_path)) {
+-                return false;
++                LOG(ERROR) << "Failed preparing folder for de facedata";
+             }
+         }
+     }

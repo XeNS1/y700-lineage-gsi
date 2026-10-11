@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+on post-fs-data
+    mkdir /data/misc/y700-bypass 0700 root root
+    rm /data/misc/y700-bypass/heartbeat
+    rm /data/misc/y700-bypass/heartbeat.new
+    restorecon_recursive /data/misc/y700-bypass
+
+service y700_bypassd /system/bin/y700_bypassd
+    class late_start
+    user root
+    group root
+    disabled
+    restart_period 2
+    # init executes this even after SIGKILL. The service is started only for the
+    # tested model/vendor; writing 1 only permits ordinary charging.
+    onrestart write /sys/class/power_supply/battery/charging_enable 1
+
+service y700_bypass_watchdog /system/bin/y700_bypassd --watchdog
+    class late_start
+    user root
+    group root
+    disabled
+    restart_period 2
+
+on property:sys.boot_completed=1 && property:ro.product.vendor.device=TB321FU && property:ro.vendor.build.version.incremental=TB321FU_CN_OPEN_USER_Q00011.0_V_ZUI_17.0.10.138_ST_250626
+    start y700_bypass_watchdog
+    start y700_bypassd

@@ -1,0 +1,13 @@
+diff --git a/modules/environment.cc b/modules/environment.cc
+index 559a5ecc808d7a6acbc9855c14508519482c44c1..5e455f985e969cdf4450c672f951b66bef79242c 100644
+--- a/modules/environment.cc
++++ b/modules/environment.cc
+@@ -25,7 +25,7 @@ namespace linkerconfig {
+ namespace modules {
+ 
+ bool IsVndkLiteDevice() {
+-  return Variables::GetValue("ro.vndk.lite").value_or("") == "true";
++  return false;
+ }
+ 
+ bool IsVndkInSystemNamespace() {

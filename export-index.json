@@ -1,0 +1,4457 @@
+{
+  "format": 1,
+  "baseline_manifest": "manifests/base.xml",
+  "target": "lineage_arm64_bvN4-bp4a-userdebug",
+  "projects": [
+    {
+      "path": "bionic",
+      "name": "LineageOS/android_bionic",
+      "base": "ff9fe01e7e1e81febaf32b15fa561aec480a112c",
+      "patch": "patches/0001-bionic.patch",
+      "sha256": "83b22338168a22e5f294ee0cabd17cc294e42f4d3871004e47d6cec002573f51",
+      "expected": {
+        "libc/bionic/sys_epoll.cpp": {
+          "kind": "file",
+          "sha256": "17ffc6da3d072601e83a702fe07044385772477a66cc53421fe73f26739964f3",
+          "mode": 420
+        },
+        "libc/bionic/system_property_api.cpp": {
+          "kind": "file",
+          "sha256": "eba8c2daaedc33efc0bb25cb46a8e2c412f6e5744c4d7c4c17590e39d88519c5",
+          "mode": 420
+        },
+        "libc/system_properties/system_properties.cpp": {
+          "kind": "file",
+          "sha256": "1e054e95b773b5d78528c1c3f862e19747bf483b1e4f5d1883ae27b99a9dde40",
+          "mode": 420
+        },
+        "libc/upstream-openbsd/android/include/arc4random.h": {
+          "kind": "file",
+          "sha256": "5d774ad9d828326e2d4209b7f2c63564c991394541eb45953e81493852961ee5",
+          "mode": 420
+        },
+        "linker/linker.cpp": {
+          "kind": "file",
+          "sha256": "9de9af03dcac8cbb02cc62748239d08f7415cb1bf4a1a30c690b16c2b371b54d",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "bootable/recovery",
+      "name": "LineageOS/android_bootable_recovery",
+      "base": "acd99f7c48e0229eaedd40aa3e2adcbabe2dc283",
+      "patch": "patches/0002-bootable__recovery.patch",
+      "sha256": "f8c2c9a41b9adf8e2ca542f812a67b671cc7d4350c335532159c1d162151409e",
+      "expected": {
+        "update_verifier/update_verifier.cpp": {
+          "kind": "file",
+          "sha256": "21915e2f87a18f15bf905f0294f27febb499da332f633413847553e11a4164e8",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "build/make",
+      "name": "LineageOS/android_build",
+      "base": "e5aaa62172df0f321e68133fa30f42316376bfe8",
+      "patch": "patches/0003-build__make.patch",
+      "sha256": "d31cee6ffdc25a5cc5e29df94295edf807ca07102de1f7a7bc9f4d4cb903ac1f",
+      "expected": {
+        "core/config.mk": {
+          "kind": "file",
+          "sha256": "b4dc06666ee07ea536e1df74ccc201d935ce3914d595b9192034ef119a989997",
+          "mode": 420
+        },
+        "target/board/generic_arm64/BoardConfig.mk": {
+          "kind": "file",
+          "sha256": "77086864a2eb8a5ef14d26ec169b4035a696646de4084d0a3ba7ca5cfeb111af",
+          "mode": 420
+        },
+        "target/product/aosp_product.mk": {
+          "kind": "file",
+          "sha256": "857b402202d93cc33890be1f67a8eaba968c29d02ed233e7b02b7c282fad4cca",
+          "mode": 420
+        },
+        "target/product/base_system.mk": {
+          "kind": "file",
+          "sha256": "d77c44be46aae98c293ba811f2573a7a3b95ea8591815e2d2552f6f8d18fe3da",
+          "mode": 420
+        },
+        "target/product/full_base_telephony.mk": {
+          "kind": "file",
+          "sha256": "d9874831bffbb26ee1dc3ff34afb2082de5d15769fe5aac90f8fd0ec1ded5feb",
+          "mode": 420
+        },
+        "target/product/generic/Android.bp": {
+          "kind": "file",
+          "sha256": "4374ac2aff47515ef74f31da3cbca4f749c0a0b767124e7ffc72e0bdc0291526",
+          "mode": 420
+        },
+        "target/product/generic_system.mk": {
+          "kind": "file",
+          "sha256": "68fd4eb7385c994d546c8777f0d275bca8231e79d02cdd498831f096e008bfbc",
+          "mode": 420
+        },
+        "target/product/gsi/Android.bp": {
+          "kind": "file",
+          "sha256": "874eeb714af29e0934d919eea459cc4824ba7435f6768c02059a25efaa4b801f",
+          "mode": 420
+        },
+        "target/product/gsi/gsi_skip_mount.cfg": {
+          "kind": "file",
+          "sha256": "0a30008c167d46e3177e9189fcb14e482325c4f08da4f47c9d708a6700f2483e",
+          "mode": 420
+        },
+        "target/product/gsi/init.gsi.rc": {
+          "kind": "file",
+          "sha256": "245afaa4229777ccc4686e0f093fdadac098a14e5daf27e57c5d7e386a2c7da7",
+          "mode": 420
+        },
+        "target/product/gsi/init.vndk-nodef.rc": {
+          "kind": "absent"
+        },
+        "target/product/gsi_release.mk": {
+          "kind": "file",
+          "sha256": "b776944a1055f4ac8481768245b08af81519381c96c813cbed192d2534a6e5c5",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "frameworks/av",
+      "name": "LineageOS/android_frameworks_av",
+      "base": "b6b36c1fdb3c6ffced822a054fbf035b544f0de2",
+      "patch": "patches/0004-frameworks__av.patch",
+      "sha256": "7892013bcda1bac16fad74f6c88d51fe8b0b525c1623468ae20cc58079e2ad49",
+      "expected": {
+        "camera/CameraParameters.cpp": {
+          "kind": "file",
+          "sha256": "7f44398dfdb84de4eea588b246710e152ec91bff7b7d7138cb79800dcae4e680",
+          "mode": 420
+        },
+        "camera/include/camera/CameraParameters.h": {
+          "kind": "file",
+          "sha256": "44922aff811ec3a6efd45e8417fb50186718772f32084816710ceedd7a7ba274",
+          "mode": 420
+        },
+        "media/libaudiohal/Android.bp": {
+          "kind": "file",
+          "sha256": "6eb85e48b2e7d8a67bf4f58cbebc65b7e8647f3e9e6ca4dc6292c0c0dda1b7b3",
+          "mode": 420
+        },
+        "media/libaudiohal/FactoryHal.cpp": {
+          "kind": "file",
+          "sha256": "95c01a0ef94d168340163723b66bb5257e1933eed5bc686d6f152ed8bd57c062",
+          "mode": 420
+        },
+        "media/libaudiohal/impl/Android.bp": {
+          "kind": "file",
+          "sha256": "0960d4f7f190cf817d5399a8cf6d5eddf7cef0640f681e50544b59abea796d73",
+          "mode": 420
+        },
+        "media/libmedia/MediaProfiles.cpp": {
+          "kind": "file",
+          "sha256": "1d038b168f06b9769983d2e3910ef86e977fde1e8fb79fa52f9b91c0363b6f29",
+          "mode": 420
+        },
+        "media/libstagefright/omx/OMXNodeInstance.cpp": {
+          "kind": "file",
+          "sha256": "b92befef409b1bf7e4d18c8e1725a67c620ff9d6b9439c23622ebd3e74c67a27",
+          "mode": 420
+        },
+        "services/audiopolicy/common/managerdefinitions/src/HwModule.cpp": {
+          "kind": "file",
+          "sha256": "7f609c5fba047f0420ee8b92975da955320646a4947bd08af40d126471a4756d",
+          "mode": 420
+        },
+        "services/audiopolicy/common/managerdefinitions/src/Serializer.cpp": {
+          "kind": "file",
+          "sha256": "ab88a58cee6671b59b5be995d8930acc61015436d268541d661ba1ba64cdaa77",
+          "mode": 420
+        },
+        "services/audiopolicy/engine/common/src/EngineBase.cpp": {
+          "kind": "file",
+          "sha256": "49c90430b071fda32011d68bc4698e08ed047a79b07bd104fc020a6e9d2f5bed",
+          "mode": 420
+        },
+        "services/audiopolicy/engine/config/src/EngineConfig.cpp": {
+          "kind": "file",
+          "sha256": "8274e799b98f5f1d8c337d92b18a9613d5befd1ca787b87ac6a6c7c2859f09e2",
+          "mode": 420
+        },
+        "services/audiopolicy/managerdefault/AudioPolicyManager.cpp": {
+          "kind": "file",
+          "sha256": "08a4b24c60b3920e3efc38da5179f70b830ec8ded1f830dc4ed5f948d0a09c82",
+          "mode": 420
+        },
+        "services/audiopolicy/managerdefault/AudioPolicyManager.h": {
+          "kind": "file",
+          "sha256": "8ec1f84904da33ac2afecc1b83a367a1cd680798e892bb35769c003e1851b270",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/Android.bp": {
+          "kind": "file",
+          "sha256": "56fe1e3a434cb67f116b739d67036685bd59bfde01bf4fcf2baae142030cdde3",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/CameraService.cpp": {
+          "kind": "file",
+          "sha256": "6a291e07cec052ff273cce5cda6ebb140b2d8e70197e1ba7d8d4fcb48cc13aff",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/CameraService.h": {
+          "kind": "file",
+          "sha256": "565bf89eabe7137d23709d9e7eed7e0ac83269e99dbcb19af8fa2e1e9c0452b7",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/common/CameraProviderManager.cpp": {
+          "kind": "file",
+          "sha256": "1f6483a14f258294aca5d1b21deb3a386d4de77c61a79b58ed2c8768b362a066",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/common/aidl/AidlProviderInfo.cpp": {
+          "kind": "file",
+          "sha256": "14480bc5a6a0307ff7eba48af03e70c3dd39e347f25af0c36a834c7c4121c06e",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/common/hidl/HidlProviderInfo.cpp": {
+          "kind": "file",
+          "sha256": "edb62e09153661f7c94b782df267fdb572c495576378c97041e5b40840a10f81",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/device3/Camera3Device.cpp": {
+          "kind": "file",
+          "sha256": "56deafa650f8f714904586f07072265d0cff803786b893dc910f61db5580eee3",
+          "mode": 420
+        },
+        "services/camera/libcameraservice/utils/SessionConfigurationUtils.cpp": {
+          "kind": "file",
+          "sha256": "88f833cada2b4c6c3703d1cb5e40c0a72af540f13cb16cde3f885a1cfdf83b80",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "frameworks/base",
+      "name": "LineageOS/android_frameworks_base",
+      "base": "1c45e31a86be95f51a94ffd1a5014c3fb2019112",
+      "patch": "patches/0005-frameworks__base.patch",
+      "sha256": "a875137183c82c0e980e942ba64f74b254c3ddeefa5aab5e8a993198db29a0e1",
+      "expected": {
+        "Android.bp": {
+          "kind": "file",
+          "sha256": "bbfeac7ce4eb3bfbaa1bc4422dd489b4330d5eec2a034e295d35fd95c6a8803e",
+          "mode": 420
+        },
+        "apex/jobscheduler/service/java/com/android/server/DeviceIdleController.java": {
+          "kind": "file",
+          "sha256": "b9fb1306c97de6ca776255e0a1c6c827e3e61a9a2c24ba2557cf957c3a9aeaad",
+          "mode": 420
+        },
+        "cmds/bootanimation/BootAnimation.cpp": {
+          "kind": "file",
+          "sha256": "d00cfa010fc2015a4f6a0546cf0dd74456eaa55a62685c6e98610901c065acbc",
+          "mode": 420
+        },
+        "core/java/android/content/pm/parsing/FrameworkParsingPackageUtils.java": {
+          "kind": "file",
+          "sha256": "049169130ab9a5658e361b28c2a4627e105f493578afca0bc27a703c96b30ce5",
+          "mode": 420
+        },
+        "core/java/android/hardware/Camera.java": {
+          "kind": "file",
+          "sha256": "938fe2cbc5cfe9d867d63a72b84d0a8fef086314a8412fc8a8751f5255aa9c99",
+          "mode": 420
+        },
+        "core/java/android/hardware/camera2/CameraManager.java": {
+          "kind": "file",
+          "sha256": "dee66e83f8bf28baa8f26e56a60ff60fa7ca5380e829c29ae09d5c3859f77179",
+          "mode": 420
+        },
+        "core/java/android/hardware/display/AmbientDisplayConfiguration.java": {
+          "kind": "file",
+          "sha256": "1f120236514319196e438512b333692c3ab242dbc579f354bf75ffdd09ae34b3",
+          "mode": 420
+        },
+        "core/java/android/hardware/fingerprint/FingerprintSensorConfigurations.java": {
+          "kind": "file",
+          "sha256": "cd42bb56926949ae2b7b82314c2e440c998866604d62820b6b8b1625d984e69b",
+          "mode": 420
+        },
+        "core/java/android/os/Environment.java": {
+          "kind": "file",
+          "sha256": "65ccdf627f9440f8c4765f3229ec761e37d1f9a46840021cdffb7d5ca145d44e",
+          "mode": 420
+        },
+        "core/java/android/os/FileUtils.java": {
+          "kind": "file",
+          "sha256": "06a4acc0aac4d09d3b54eb057c272976ac64645650c3f67ad22860f05d5ea5dc",
+          "mode": 420
+        },
+        "core/java/android/os/storage/StorageManager.java": {
+          "kind": "file",
+          "sha256": "30fa83516b9864417810a45d2d5f7718ce05ee6aceb19d3241dfeaab1ca52193",
+          "mode": 420
+        },
+        "core/java/android/view/DisplayCutout.java": {
+          "kind": "file",
+          "sha256": "22c8a65fb12d585203216886d11a996c4f5b91263cf00f6339c420c63aede612",
+          "mode": 420
+        },
+        "core/java/android/view/KeyEvent.java": {
+          "kind": "file",
+          "sha256": "6aa2c727a1529e6b4286687c7f19639f181d0d16c18b4c75bfacd936191f1a04",
+          "mode": 420
+        },
+        "core/java/android/view/RoundedCorners.java": {
+          "kind": "file",
+          "sha256": "feccc652cac4f9dbec5394c9277e1aa23c3352e8265e6ffcbf114ae4beee978a",
+          "mode": 420
+        },
+        "core/java/android/view/animation/AnimationUtils.java": {
+          "kind": "file",
+          "sha256": "d05d4f97df72528c4a296d6c6b74f776d9e8dbd784ea629eacd0204ca4fd94d3",
+          "mode": 420
+        },
+        "core/java/com/android/internal/os/RoSystemProperties.java": {
+          "kind": "file",
+          "sha256": "08c2a51391a8bf2b74512141a3a44807b89952a85572b8b514780a4340937930",
+          "mode": 420
+        },
+        "core/jni/com_android_internal_os_Zygote.cpp": {
+          "kind": "file",
+          "sha256": "6a08f26edc029862a121a4898c830e8b9af09c232cd70e9d913cd10f6c77db9d",
+          "mode": 420
+        },
+        "packages/SettingsLib/DisplayUtils/src/com/android/settingslib/display/BrightnessUtils.java": {
+          "kind": "file",
+          "sha256": "5cd89e8cba3acf19bc048eb1b1960eb3c4a00deb0d9688cc77b1ecdec8350f1b",
+          "mode": 420
+        },
+        "packages/SettingsProvider/res/values/defaults.xml": {
+          "kind": "file",
+          "sha256": "59b2fcda5d312c1a7444aaf6f12d03e21761751759bd7236ded56647a40f8e18",
+          "mode": 420
+        },
+        "packages/SettingsProvider/src/com/android/providers/settings/SettingsProvider.java": {
+          "kind": "file",
+          "sha256": "36c87798f0fbe183c0da8569ae05109013d4cec0429bd1c85a73121316d97075",
+          "mode": 420
+        },
+        "packages/SystemUI/Android.bp": {
+          "kind": "file",
+          "sha256": "5bed4b0507512cca4474e06c66eec5bfa69d38bb8702fa49dc21460db314fc36",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/biometrics/UdfpsController.java": {
+          "kind": "file",
+          "sha256": "5f67d354489543e5721c12259c3534803dd85dc77f4416f2b3d060d1bb81aae4",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/brightness/shared/model/GammaBrightness.kt": {
+          "kind": "file",
+          "sha256": "97c5036daea67460dd958f0b93f77a0e4f43e1294faf53d88fdf76a52d43a259",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/keyguard/KeyguardViewMediator.java": {
+          "kind": "file",
+          "sha256": "041532868c07ce841ffcbf54d1efa93bea9f7bca40c95e94d548ee5665533aea",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/media/controls/ui/controller/MediaCarouselController.kt": {
+          "kind": "file",
+          "sha256": "cfab8731c40ff18343bdc7175739352d674a362c6f7987f1f58725eaee42e084",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/qs/QSHostAdapter.kt": {
+          "kind": "file",
+          "sha256": "2478e2f7e41fa5ac91520c3d2b4c582172a4ebeb09f35bca073d604cd8de4dd8",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/settings/brightness/BrightnessController.java": {
+          "kind": "file",
+          "sha256": "cb19e640cde4b9c72821ca7b5b105f72379b1c65f31fc9904854b701cba1156f",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/shade/ShadeHeaderController.kt": {
+          "kind": "file",
+          "sha256": "927d5ba1144cc464fb1bc5fd5ca4f6e7b5178a5a4384f4571f4b1574a7465ae5",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/statusbar/layout/StatusBarContentInsetsProvider.kt": {
+          "kind": "file",
+          "sha256": "edd2f56b0f6c3f1da0e5f0bb29ca3766b5e693c0a27055f9bed31bf93d7a168d",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/statusbar/phone/KeyguardStatusBarView.java": {
+          "kind": "file",
+          "sha256": "c391e5e3d7cb84eab350ab0aff27fa4dc90c48c823eaa199801bb4b63ab49e11",
+          "mode": 420
+        },
+        "packages/SystemUI/src/com/android/systemui/statusbar/phone/PhoneStatusBarView.java": {
+          "kind": "file",
+          "sha256": "ad8d1b051de2aa3866faad82fb2ce2dd2a86866feecfe9fdeb2be7cdae69a4a7",
+          "mode": 420
+        },
+        "services/core/Android.bp": {
+          "kind": "file",
+          "sha256": "dbbb65dcf793e8c09d889191cc613a1ac99d450c686217ac96d081ca962bfed6",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/ConsumerIrService.java": {
+          "kind": "file",
+          "sha256": "56659cc8fdcf83819be5f741564e68ae57a7e7b80174969b0614d2e559c8a450",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/SystemConfig.java": {
+          "kind": "file",
+          "sha256": "89741aa829f87e7dfc1559b0d63667563f140765c68f724ba891c9f874cbf3cb",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/Watchdog.java": {
+          "kind": "file",
+          "sha256": "67979975d580fce4d61accda1eea3911611d1212b117024dcbcb1db7eed6eca3",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/am/ProcessList.java": {
+          "kind": "file",
+          "sha256": "06eb7a29eb6b1c1da7d615ed88bbc939576f9a5db65878dbd4d5577a96273440",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/biometrics/AuthService.java": {
+          "kind": "file",
+          "sha256": "d38fd3b08bbe8694f89140b979cbd6c6ea10dc4c98a69e09de12b2f0c19550b4",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/biometrics/sensors/fingerprint/aidl/FingerprintProvider.java": {
+          "kind": "file",
+          "sha256": "8d46d41f3fbd6e79bd7bbeed0cbae8283f0de3511f029056493054b89bb37dce",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/display/DisplayDeviceConfig.java": {
+          "kind": "file",
+          "sha256": "526bd537658b7cf8cd1c14955fa11623f7857f9962d0745865b6f92ef667ffb7",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/display/DisplayPowerController.java": {
+          "kind": "file",
+          "sha256": "b660fd0b65b5e7cf4084b89544f80cf4a388ce129461df2aeb7713bc74cbb383",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/display/DisplayPowerProximityStateController.java": {
+          "kind": "file",
+          "sha256": "a3ddf512e06b27120d06f7600b65c1fc9be33ef4aac01234fe27cab2c3c65b75",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/display/LocalDisplayAdapter.java": {
+          "kind": "file",
+          "sha256": "30c65f0b5f8f7d53dab063fe97ff983df279848b54ebef61525a3005f37d7431",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/input/InputManagerService.java": {
+          "kind": "file",
+          "sha256": "490dcf5d47f100e878a9b3b7a2ef7022fd9776d82890e1c4a110b66c0920caf5",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/lights/LightsService.java": {
+          "kind": "file",
+          "sha256": "f0ea5cdb288954c08beaf4ca8be1ce091c55f1887a6bd8fcfe3d8397b18d0592",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/net/NetworkPolicyManagerService.java": {
+          "kind": "file",
+          "sha256": "056f4171d6825dee8482ca2000a30cd35b836a7476902d8d47b076afbdd100c9",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/pm/PackageManagerServiceUtils.java": {
+          "kind": "file",
+          "sha256": "85c66a6e64606e39ced56a11ff79a429901eaaf7c1158f6481c94b07a6029c10",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/pm/SELinuxMMAC.java": {
+          "kind": "file",
+          "sha256": "b6aebea9404eb56279f32be8241f53e298fc07e6a7291118fe56ee37cf3bddf3",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/pm/ScanPackageUtils.java": {
+          "kind": "file",
+          "sha256": "d8d09f17c0618094bd4b74ef39a54085633046219453e28d78c6ede903eaca00",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/pm/UserManagerService.java": {
+          "kind": "file",
+          "sha256": "858a41dd5205269764c295b7e16daca2a03a9afe5ddb50a70e186c8ace6b1c80",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/power/PowerManagerService.java": {
+          "kind": "file",
+          "sha256": "5c635a34555688c2c540109b01f83c13d5948d97bc08d62f2e6a6ee1ee436a8c",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/power/hint/HintManagerService.java": {
+          "kind": "file",
+          "sha256": "02c838afffd62f38535141a4a05b3d1d4ac895fd3d2bff4a29429e315801c233",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/wm/ActivityTaskManagerService.java": {
+          "kind": "file",
+          "sha256": "9b331f14ac379be02a4e0b72fd43c89cf353d4af7765c57b021677146ef6bb42",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/wm/DisplayPolicy.java": {
+          "kind": "file",
+          "sha256": "ce9b1188c29d9f25dd8167977efcd5e6d28e9ca3a89c828a1e80dc848b555690",
+          "mode": 420
+        },
+        "services/core/java/com/android/server/wm/DisplayWindowSettings.java": {
+          "kind": "file",
+          "sha256": "caf8c9456947e1c0a20a682e67176aff6fe6dc2590cbbc509cf35d5b80a7d571",
+          "mode": 420
+        },
+        "services/core/jni/Android.bp": {
+          "kind": "file",
+          "sha256": "b1aa9b1b5f60d51b280be2aacf36f4ec1da6b43ba33c185a44f3f47a43ebea32",
+          "mode": 420
+        },
+        "services/core/jni/com_android_server_ConsumerIrService.cpp": {
+          "kind": "file",
+          "sha256": "944971c7594134a86f1054e06698402b173afef1b4fc6fc21578731e5f5e47a2",
+          "mode": 420
+        },
+        "services/core/jni/com_android_server_power_PowerManagerService.cpp": {
+          "kind": "file",
+          "sha256": "96f3f62c278db1b1e1b2a3ecfd33d39a7631c1ff5c705bc97211a627bbaf4c70",
+          "mode": 420
+        },
+        "services/voiceinteraction/java/com/android/server/voiceinteraction/VoiceInteractionSessionConnection.java": {
+          "kind": "file",
+          "sha256": "6ce1842f78e56333645a1d542bd3146fb5f879e1f5aa58b7397bead16fd92cfa",
+          "mode": 420
+        },
+        "telephony/common/com/android/internal/telephony/util/TelephonyUtils.java": {
+          "kind": "file",
+          "sha256": "45ab0938a94bcc08176753046c680f3ff2b18c18e037581c64b11994911455d2",
+          "mode": 420
+        },
+        "telephony/java/android/telephony/NetworkRegistrationInfo.java": {
+          "kind": "file",
+          "sha256": "9b234e84cb23d4f85cb82f355e14505215413893d63dff742033e57196352b44",
+          "mode": 420
+        },
+        "telephony/java/android/telephony/SubscriptionManager.java": {
+          "kind": "file",
+          "sha256": "00adbe18a52e274172cdd8180177a9c5ea0f9bddfbd5e94bba7b917e863152f2",
+          "mode": 420
+        },
+        "telephony/java/android/telephony/TelephonyManager.java": {
+          "kind": "file",
+          "sha256": "0bd02d4eb26c876d1e27ad2e54556dd85cfd163df1d6570ec898ee21a0e893c1",
+          "mode": 420
+        },
+        "telephony/java/android/telephony/euicc/EuiccManager.java": {
+          "kind": "file",
+          "sha256": "5201925ad34f19610b0c7297f581afc2425e0e5c79fd6514107a04270d9983c1",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "frameworks/native",
+      "name": "LineageOS/android_frameworks_native",
+      "base": "9568531f9be7ae65f260699811f32ec4e461de6e",
+      "patch": "patches/0006-frameworks__native.patch",
+      "sha256": "2748cb647fd2e56784003d1099b41cce11798b355af6d349726ed36334c406a9",
+      "expected": {
+        "cmds/installd/migrate_legacy_obb_data.sh": {
+          "kind": "file",
+          "sha256": "678158c4662c72dd20ed202e6d1d456107f35931df1fb9dbde232df9886927e9",
+          "mode": 420
+        },
+        "include/powermanager/PowerHalLoader.h": {
+          "kind": "file",
+          "sha256": "b86c5c9e83a1da3d8d08f8f2e958b6d01a22af4132a43d935e00484177e52ca7",
+          "mode": 420
+        },
+        "include/powermanager/PowerHalWrapper.h": {
+          "kind": "file",
+          "sha256": "09d4c8e1005cf9ba21dd2a49e29eead788bf8689334737304dbd06f7d0e4b1a4",
+          "mode": 420
+        },
+        "libs/gui/BLASTBufferQueue.cpp": {
+          "kind": "file",
+          "sha256": "bdc59ddfadb89e386777dc0c190cd84bd1693990292584a5c3be977a570315f6",
+          "mode": 420
+        },
+        "libs/gui/Surface.cpp": {
+          "kind": "file",
+          "sha256": "ae3f613c9dd23dd8b342c3b8b00e45a97467bdd250654f5fe9c84f177c519d61",
+          "mode": 420
+        },
+        "libs/gui/include/gui/Surface.h": {
+          "kind": "file",
+          "sha256": "1c4d6815d2e7ac6331afcad659ea1c0f4cf6b9f96dc76adab2c88d1312f0952c",
+          "mode": 420
+        },
+        "libs/sensor/Sensor.cpp": {
+          "kind": "file",
+          "sha256": "09640ec6ac98c83b835caa115efef2868c4ffc78607675bddde0263cab3f87a3",
+          "mode": 420
+        },
+        "libs/sensor/include/sensor/Sensor.h": {
+          "kind": "file",
+          "sha256": "b80bbe5887871ae65d5fddeb44409e211644573582e3d52f534ef1da8f5a3baa",
+          "mode": 420
+        },
+        "libs/ui/Gralloc2.cpp": {
+          "kind": "file",
+          "sha256": "00a8560225c505cac878dad7cc6ef39669e5306f211c668eacf7f4c68762b6df",
+          "mode": 420
+        },
+        "libs/ui/Gralloc3.cpp": {
+          "kind": "file",
+          "sha256": "3a31bd3ff57b58162df0114b75a849edb4df340e0b7ca2eaec30dcd1c9fd2e64",
+          "mode": 420
+        },
+        "libs/ui/Gralloc4.cpp": {
+          "kind": "file",
+          "sha256": "e4ed68c09cc9a3275b12fe41c402c81695e3ca59587e039e31e927d32bf093e5",
+          "mode": 420
+        },
+        "opengl/libs/EGL/Loader.cpp": {
+          "kind": "file",
+          "sha256": "02f738d660d195f75efc3ce135404f12ee4d396bd8d9f8b40d86bdd4d2f10445",
+          "mode": 420
+        },
+        "services/gpuservice/gpumem/GpuMem.cpp": {
+          "kind": "file",
+          "sha256": "297d9e071946638ad7dc3d1b91855d934c70381e4525aceb0c21ef3fa73f1a2e",
+          "mode": 420
+        },
+        "services/gpuservice/gpuwork/GpuWork.cpp": {
+          "kind": "file",
+          "sha256": "03f3a44aff6f0044b2b053d056be08441480feb92d1e9a9d1c386e6ce49b31b8",
+          "mode": 420
+        },
+        "services/inputflinger/reader/EventHub.cpp": {
+          "kind": "file",
+          "sha256": "52998cd487086740d637d1bf9490bb11ab498abcd678dec645017ad3fdcb630f",
+          "mode": 420
+        },
+        "services/inputflinger/reader/InputDevice.cpp": {
+          "kind": "file",
+          "sha256": "1a75df9fcae204c1357d96ce409678218c9f27093a14b5cd8b010c51c1070aaa",
+          "mode": 420
+        },
+        "services/inputflinger/reader/include/EventHub.h": {
+          "kind": "file",
+          "sha256": "2dfad2ffbf58edb7cb48d69ba098c2804fe81259f8d8d34dc7f77512f6cbb54c",
+          "mode": 420
+        },
+        "services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.cpp": {
+          "kind": "file",
+          "sha256": "44500d9ee9f0a352c5a54410fd79b39fc589f34009d24b61b3de7dacf5b1ed71",
+          "mode": 420
+        },
+        "services/inputflinger/reader/mapper/accumulator/MultiTouchMotionAccumulator.h": {
+          "kind": "file",
+          "sha256": "85263aef3da1312f40acb1d0c9394d607f6ca2e8dfedfbf5970b66c697e0cb43",
+          "mode": 420
+        },
+        "services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.cpp": {
+          "kind": "file",
+          "sha256": "378c1b6a7ba3a74aa395ea8f95515307ac861bc52e0c39d511fc3a320b2a84b9",
+          "mode": 420
+        },
+        "services/inputflinger/reader/mapper/accumulator/SingleTouchMotionAccumulator.h": {
+          "kind": "file",
+          "sha256": "78b6434e555659e993e91c374bb13342b055d767565cc7ddf3c34b7930af378a",
+          "mode": 420
+        },
+        "services/powermanager/Android.bp": {
+          "kind": "file",
+          "sha256": "8b603fe68ef1c820b2b3c5e7dd4dcd622628b801bd627982dfa4926cb9b99ed5",
+          "mode": 420
+        },
+        "services/powermanager/PowerHalController.cpp": {
+          "kind": "file",
+          "sha256": "42b4b75ea90e5426af2a88959f4a650f5653d63f73112215ff4255e3fb0868e6",
+          "mode": 420
+        },
+        "services/powermanager/PowerHalLoader.cpp": {
+          "kind": "file",
+          "sha256": "e6fd31167528a312b743591dc90d3a2fce54242fdba7755ce9ed8effb7a1208c",
+          "mode": 420
+        },
+        "services/powermanager/PowerHalWrapper.cpp": {
+          "kind": "file",
+          "sha256": "3bd3115717c9408ea38124fbd2ad05f088f84d147b15732756f3e0279454bf89",
+          "mode": 420
+        },
+        "services/sensorservice/SensorDevice.cpp": {
+          "kind": "file",
+          "sha256": "61acf2ef0c860a9388a111b60a8ec5b60af694f35a35ac3726c39b651d9612c4",
+          "mode": 420
+        },
+        "services/surfaceflinger/CompositionEngine/Android.bp": {
+          "kind": "file",
+          "sha256": "774daf212072f83a04a44dd07b8c17444b563c13f4878fb65301ef900fe427bc",
+          "mode": 420
+        },
+        "services/surfaceflinger/CompositionEngine/include/compositionengine/LayerFE.h": {
+          "kind": "file",
+          "sha256": "900a48eb7dabd7b560f12469f19323fbef51f2c5f2653bcfa11f5094c1365a35",
+          "mode": 420
+        },
+        "services/surfaceflinger/CompositionEngine/include/compositionengine/mock/LayerFE.h": {
+          "kind": "file",
+          "sha256": "02ab07db5f8e24a9d360eb5f3cc5e5cbaad0fa308f7cbeee273461405d20c994",
+          "mode": 420
+        },
+        "services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp": {
+          "kind": "file",
+          "sha256": "7d2406b69f40fe4b5ed63068966b733c1565ce9ee9bfe93ca47f0c1caa5b9740",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/AidlComposerHal.cpp": {
+          "kind": "file",
+          "sha256": "eb3e7985997638e1ea258a4ed55cd365d7ed420c84671f5bb52379bca13ea508",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/AidlComposerHal.h": {
+          "kind": "file",
+          "sha256": "eb3422ab9368ab1ae943f0be44119239aa8dfcebf2930d5e3c4794cc428ad608",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/ComposerHal.h": {
+          "kind": "file",
+          "sha256": "959a02425c070dd1c17bbdcf59b9bcd5b6ac781d6d84b177da10fbae7cd92dec",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/HWC2.cpp": {
+          "kind": "file",
+          "sha256": "1253fffbcdf17354185554fcaa28bc068a2c8fcab1989bb865cb306cb99c1464",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/HWC2.h": {
+          "kind": "file",
+          "sha256": "693fad7f182bce1a952b1c1cdca76c0d973464bbdc8e8574b53187381ef70abe",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/HidlComposerHal.cpp": {
+          "kind": "file",
+          "sha256": "41e33a72cd7ff513e431507126ef5fd3532c1f90aed3de63fb8adb991f710ffa",
+          "mode": 420
+        },
+        "services/surfaceflinger/DisplayHardware/HidlComposerHal.h": {
+          "kind": "file",
+          "sha256": "a847ed7a420dc8636e38d470755831ce60eb90980e16e3fbe96ef44971942235",
+          "mode": 420
+        },
+        "services/surfaceflinger/LayerFE.cpp": {
+          "kind": "file",
+          "sha256": "4cfb12135802f62bf05a33af805579fc6224e99d8ed1e80f0cb19ce7d9b0930e",
+          "mode": 420
+        },
+        "services/surfaceflinger/LayerFE.h": {
+          "kind": "file",
+          "sha256": "df3d3faadacd8106fbf6387c4a6bd6f059d445a7f9906a4b5ea7f01ce3547c4a",
+          "mode": 420
+        },
+        "services/surfaceflinger/PowerAdvisor/PowerAdvisor.cpp": {
+          "kind": "file",
+          "sha256": "94db2d77e8eb41d6833e13e98a6b717fe2bd0b303f0924e3d1bf6791156ea571",
+          "mode": 420
+        },
+        "services/surfaceflinger/SurfaceFlinger.cpp": {
+          "kind": "file",
+          "sha256": "6dc90bb8efd163d8410f3112b57c8f87dd953aafb74b9eb66403facfb7213171",
+          "mode": 420
+        },
+        "services/surfaceflinger/SurfaceFlinger.h": {
+          "kind": "file",
+          "sha256": "8b8d87ad4abde843aef91493985052e238ced63174d95e760e6c0916cd401d12",
+          "mode": 420
+        },
+        "services/vibratorservice/VibratorHalController.cpp": {
+          "kind": "file",
+          "sha256": "dc5b771c1c6c47492de4b19bcdab02f761bf7e61ed0015ee91e5227972a24edf",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "frameworks/opt/telephony",
+      "name": "LineageOS/android_frameworks_opt_telephony",
+      "base": "566e62daf4e93be6f934001bc76d60aba087b4d6",
+      "patch": "patches/0007-frameworks__opt__telephony.patch",
+      "sha256": "eb3d972bf3c2df37df25c5ec6b8693887f9f6c69fb8698f4ae1e518c536e4c3f",
+      "expected": {
+        "Android.bp": {
+          "kind": "file",
+          "sha256": "a26778546faf3b68eb4e3d745960d664bf360cefb196f9c8cc5e2c3807a06655",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/GsmCdmaPhone.java": {
+          "kind": "file",
+          "sha256": "6cd62bd5e2f9fec8ab68961ac3b6648b4b30edca5b87ae0097cd95b3baa8b88d",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/MessagingResponse.java": {
+          "kind": "file",
+          "sha256": "35d21bd7e5fd757a75e2028e471e92bc15bc8d00dc7ae0f705861ce1f7bb6975",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/RIL.java": {
+          "kind": "file",
+          "sha256": "0fd4e85d6cb995e752138fd78a5b66f3201ae4000628cbbb6a0714b8c9792e17",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/RadioNetworkProxy.java": {
+          "kind": "file",
+          "sha256": "7381201e134c904083d959693adc5f53a1a6b260f256652fa45f8c81626a2a7e",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/RadioResponse.java": {
+          "kind": "file",
+          "sha256": "e0f810ff822ec639173ddb18d6d48fd5a7296ea6548b065611d77b544f67cb14",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/RadioServiceProxy.java": {
+          "kind": "file",
+          "sha256": "743d2a924dac43b2d3f9c613a14ea117ff55abeb745676d9e201419ce43e6df9",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/metrics/TelephonyMetrics.java": {
+          "kind": "file",
+          "sha256": "e40254de680709caac7229fd45c2327fb8678a5d16100a72aacb6896b1e3cd5f",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/subscription/SubscriptionManagerService.java": {
+          "kind": "file",
+          "sha256": "00e267027cee7f35a3d883c06237dbe1bd9db1621b293998017f4f50eda88524",
+          "mode": 420
+        },
+        "src/java/com/android/internal/telephony/uicc/UiccSlot.java": {
+          "kind": "file",
+          "sha256": "59af59a9076e23bbdd867c2ec4294ec0d0e997d22247e3a08573635dd710cd2f",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "hardware/interfaces",
+      "name": "LineageOS/android_hardware_interfaces",
+      "base": "13d687a84c834af855bfb314b853b8372a7aa6d9",
+      "patch": "patches/0008-hardware__interfaces.patch",
+      "sha256": "aa44d46f3416beeb396f866a3b505de17aa69d3fb689f29d4319162401484536",
+      "expected": {
+        "boot/aidl/client/BootControlClient.cpp": {
+          "kind": "file",
+          "sha256": "090b41587c05e0776e389549f6cbaf8947e3daf8a80b4f8992722d194557157e",
+          "mode": 420
+        },
+        "boot/aidl/client/include/BootControlClient.h": {
+          "kind": "file",
+          "sha256": "0c9f183392ed71b573095a5e1d378931cbaea0c7a9c13adac0b8eb3b68e2417d",
+          "mode": 420
+        },
+        "compatibility_matrices/Android.bp": {
+          "kind": "file",
+          "sha256": "f1ca2286a94c222b65e14b3550a5e418327a5483470c6dbfcc6fb977bd7ca9a8",
+          "mode": 420
+        },
+        "graphics/composer/2.1/utils/command-buffer/include/composer-command-buffer/2.1/ComposerCommandBuffer.h": {
+          "kind": "file",
+          "sha256": "a64322dd819409ad47d2e9cf65fbe6d5a134ab78fd581bf6bcfc0cd58536576b",
+          "mode": 420
+        },
+        "sensors/aidl/convert/convert.cpp": {
+          "kind": "file",
+          "sha256": "7e371d2b82d0aa574930952f3e60b83902cfb3ff25ea0f90406ae871f063b6c4",
+          "mode": 420
+        },
+        "vibrator/1.0/Android.bp": {
+          "kind": "file",
+          "sha256": "b4e79ed6a2801c8cd18a66db3ec6c278d7ff99284be25c49b3ef84937c27eb47",
+          "mode": 420
+        },
+        "vibrator/1.0/IVibrator.hal": {
+          "kind": "file",
+          "sha256": "06ea64cc3565777f3b259e400ffa7100d07f3827ad9357b0c5d3c651384e5553",
+          "mode": 420
+        },
+        "vibrator/1.0/types.hal": {
+          "kind": "file",
+          "sha256": "0fecd34ae64f32eff6aa615fd662349242c0b8b6e303ef05a7cb5776c732f413",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "hardware/oplus",
+      "name": "LineageOS/android_hardware_oplus",
+      "base": "b1dc1db2df55601e4125abfdc3bc3f273f3ecb2e",
+      "patch": "patches/0009-hardware__oplus.patch",
+      "sha256": "ebbe778e1b537c8617cf13afb07f0463e47e83b538b1d9300c1ecb03686db3fb",
+      "expected": {
+        "fingerprint/Android.bp": {
+          "kind": "file",
+          "sha256": "28b386a9ea130b7ed678e24d52d466d8f744567968a2aef27d7cc39d8b374c3d",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "kernel/configs",
+      "name": "LineageOS/android_kernel_configs",
+      "base": "091688a5c5186cd124a0d19b06441bb8b04c3073",
+      "patch": "patches/0010-kernel__configs.patch",
+      "sha256": "38d85f369c46860edb15ba8638a28b4a0b89293a980b781cd58e892bbeb8e4b3",
+      "expected": {
+        "p/android-4.4/Android.bp": {
+          "kind": "file",
+          "sha256": "ff211660328d5acf6862b337b1c818eb58ab818a810f72cdc14b29e35ad54361",
+          "mode": 420
+        },
+        "p/android-4.4/android-base-arm.config": {
+          "kind": "file",
+          "sha256": "d41fbc0214bf03074f0dd23f09233efcbb36916f0bb371dc6b5903da441e5c42",
+          "mode": 420
+        },
+        "p/android-4.4/android-base-arm64.config": {
+          "kind": "file",
+          "sha256": "6ba4f4bb1e496e0444b9b10fd352e0a73ea3bc0ed7d84cb24b0b17b052dfab95",
+          "mode": 420
+        },
+        "p/android-4.4/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "60a73c3d840047031e4cecba3627a5748680560a371bceaef30374bc1d53be48",
+          "mode": 420
+        },
+        "p/android-4.4/android-base.config": {
+          "kind": "file",
+          "sha256": "086064143a0b858268775d9f25692a710a7fa2ccf4cff4effa0c9462566b12fc",
+          "mode": 420
+        },
+        "p/android-4.4/android-recommended.config": {
+          "kind": "file",
+          "sha256": "9cf6a4c62a039a98600d25c24b1112f8cfc8760acf7f2f909e74df4b6efa29cf",
+          "mode": 420
+        },
+        "q/android-4.9/Android.bp": {
+          "kind": "file",
+          "sha256": "40ab69e4f7c819e838a0e5255964de3b070067ca3e5215153132b2b94d6dec29",
+          "mode": 420
+        },
+        "q/android-4.9/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "192af64e9b3b01df9f2083b0facac40c5f82eaac8702e855eec62001b7f29f5f",
+          "mode": 420
+        },
+        "q/android-4.9/android-base.config": {
+          "kind": "file",
+          "sha256": "890cc448451dd3cffb365c1ccc7752642e38ef2e4eabeb11c744fb9e29080af0",
+          "mode": 420
+        },
+        "q/android-4.9/android-recommended-arm.config": {
+          "kind": "file",
+          "sha256": "51c86c0fffd5b114b4d6900db4d7180289e2a00c960b1fb2827dc21c2dc0988e",
+          "mode": 420
+        },
+        "q/android-4.9/android-recommended-arm64.config": {
+          "kind": "file",
+          "sha256": "21c1f22bd8fa55cdec2589177c384f89255e6481ce5c2221280cfbb66b509bab",
+          "mode": 420
+        },
+        "q/android-4.9/android-recommended-x86.config": {
+          "kind": "file",
+          "sha256": "d02bbf537ad8d053dcb9dea66f2983b9f178b1b9ed0118ec7b942ed6222f90b1",
+          "mode": 420
+        },
+        "q/android-4.9/android-recommended.config": {
+          "kind": "file",
+          "sha256": "38857c8088f11c3bb1ad918a5f97725ce12b85c16725ff9de8d4db1c43e50e42",
+          "mode": 420
+        },
+        "r/android-4.14/Android.bp": {
+          "kind": "file",
+          "sha256": "a28151204d948b64b89134f6025532c413c7c5320f7ba53c72c4a0368194af74",
+          "mode": 420
+        },
+        "r/android-4.14/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "5fc06ec8f824d84776ffdc07f22ce61c191bf4d45ba2037850c593a2eacbdf2f",
+          "mode": 420
+        },
+        "r/android-4.14/android-base.config": {
+          "kind": "file",
+          "sha256": "5bffdbc2b796bb829b5a46e3460fe6c3979b51fc1303c054e1ac4057e5351530",
+          "mode": 420
+        },
+        "r/android-4.14/android-recommended-arm.config": {
+          "kind": "file",
+          "sha256": "3990c4d4f54b94d62a1c40f4e028fc1eb061a59e180c58617aaaafa1211e5f67",
+          "mode": 420
+        },
+        "r/android-4.14/android-recommended-arm64.config": {
+          "kind": "file",
+          "sha256": "62c170d86977d6d920e43d26221aa8a9eafc1f36027879609afadd85c6d7e4d2",
+          "mode": 420
+        },
+        "r/android-4.14/android-recommended-x86.config": {
+          "kind": "file",
+          "sha256": "b3db3466d25d5b29b27a48ececd67a83853090a3d8cb2a6455b3c2841000c978",
+          "mode": 420
+        },
+        "r/android-4.14/android-recommended.config": {
+          "kind": "file",
+          "sha256": "38a6a695af520c34def94a5cc7c9d75af2e3f1f3bedb1dee8c48402b1ce9925f",
+          "mode": 420
+        },
+        "r/android-4.14/non_debuggable.config": {
+          "kind": "file",
+          "sha256": "7d0ce32d48af8d08e6233e6fce27fc45a9cfead2197726261738e92419a837a7",
+          "mode": 420
+        },
+        "r/android-4.19/Android.bp": {
+          "kind": "file",
+          "sha256": "5d67db4a7e60bab5fb233aa3cce62d07ef540c05910eb6e652dc413a5bf867da",
+          "mode": 420
+        },
+        "r/android-4.19/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "65d11e2638636e5e27216234845caeb2d59cd59ed0d2f4b8f02532cccf0c5e75",
+          "mode": 420
+        },
+        "r/android-4.19/android-base.config": {
+          "kind": "file",
+          "sha256": "e7eba158bc9e2583b7d4248676f6f715c72d854957f50affac538da96e8e3e88",
+          "mode": 420
+        },
+        "r/android-4.19/android-recommended-arm.config": {
+          "kind": "file",
+          "sha256": "3990c4d4f54b94d62a1c40f4e028fc1eb061a59e180c58617aaaafa1211e5f67",
+          "mode": 420
+        },
+        "r/android-4.19/android-recommended-arm64.config": {
+          "kind": "file",
+          "sha256": "62c170d86977d6d920e43d26221aa8a9eafc1f36027879609afadd85c6d7e4d2",
+          "mode": 420
+        },
+        "r/android-4.19/android-recommended-x86.config": {
+          "kind": "file",
+          "sha256": "b3db3466d25d5b29b27a48ececd67a83853090a3d8cb2a6455b3c2841000c978",
+          "mode": 420
+        },
+        "r/android-4.19/android-recommended.config": {
+          "kind": "file",
+          "sha256": "ca562536ceafedf3735a0269ee0497bc37263d8a6daa888d7d9bd409b4ba392c",
+          "mode": 420
+        },
+        "r/android-4.19/non_debuggable.config": {
+          "kind": "file",
+          "sha256": "7d0ce32d48af8d08e6233e6fce27fc45a9cfead2197726261738e92419a837a7",
+          "mode": 420
+        },
+        "s/android-4.14/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "1a4510518b0a002fab57b26078569dc0923b275827e5cee10cc5c0550a6f4f99",
+          "mode": 420
+        },
+        "s/android-4.19/android-base-conditional.xml": {
+          "kind": "file",
+          "sha256": "b1652633d49c627684d624b8e0d03ff62844c7afa30612925b90965ef608fddc",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/apps/Messaging",
+      "name": "LineageOS/android_packages_apps_Messaging",
+      "base": "6d131ed8e7249b0ece41169e17d8d0162beae7e0",
+      "patch": "patches/0011-packages__apps__Messaging.patch",
+      "sha256": "34a93739c4047e25a500cc299910938646811281e04eb58fa0b02dc3242411b9",
+      "expected": {
+        "res/drawable/ic_wear_read.xml": {
+          "kind": "file",
+          "sha256": "0583dd5da76306d0b92dab32f78676613f182597ae17b655b974b1f208ddadbe",
+          "mode": 420
+        },
+        "res/values-zh-rCN/cm_strings.xml": {
+          "kind": "file",
+          "sha256": "9439ad9112fcfe45a81c909816bc9d3afa30f56ed6b673b32e7bb395986be075",
+          "mode": 420
+        },
+        "res/values/cm_strings.xml": {
+          "kind": "file",
+          "sha256": "0c5e22acf491f62d8228d9396d73d75549dcc3f283a19730400c9e599991c856",
+          "mode": 420
+        },
+        "src/com/android/messaging/datamodel/BugleNotifications.java": {
+          "kind": "file",
+          "sha256": "9b9ee1617f18a68425304a106724c74167c6bd9d6a61f42815f702974c8db6e3",
+          "mode": 420
+        },
+        "src/com/android/messaging/datamodel/NotificationState.java": {
+          "kind": "file",
+          "sha256": "5abccc391d6553cf570b28989e466e87c54b632bae672498ea04da2c8c2088c8",
+          "mode": 420
+        },
+        "src/com/android/messaging/receiver/NotificationReceiver.java": {
+          "kind": "file",
+          "sha256": "fbdc1c647f1fc1987dd69d412b932b8bce8eb17a1356ec1305998ab98262b0da",
+          "mode": 420
+        },
+        "src/com/android/messaging/ui/UIIntents.java": {
+          "kind": "file",
+          "sha256": "b48850e0a7c5d418c3ea3c69ccc06663a6fa5a0b0708dbfeacba7d58cff0fed6",
+          "mode": 420
+        },
+        "src/com/android/messaging/ui/UIIntentsImpl.java": {
+          "kind": "file",
+          "sha256": "2c40a3a2fc5d6195366fd9283849d4e1a425f8a261573d20240b15acb20586b1",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/apps/Settings",
+      "name": "LineageOS/android_packages_apps_Settings",
+      "base": "8d8f6486b274bcf0aa6e5d0cbba52c0b05ae5c65",
+      "patch": "patches/0012-packages__apps__Settings.patch",
+      "sha256": "5192cb87ef477f4b8bc0417109f703d3ef9ccc7b5a3240a1da2317aad55ed23c",
+      "expected": {
+        "Android.bp": {
+          "kind": "file",
+          "sha256": "dc5b38d7862e11cec7310bf6a614a0b01e8602ca49ae37b4745ef503c00996a5",
+          "mode": 420
+        },
+        "AndroidManifest.xml": {
+          "kind": "file",
+          "sha256": "88a16dc23c39198f35069d45e45df0e640f0a2349e75ab405bda7c87297b787c",
+          "mode": 420
+        },
+        "res/layout/wifi_network_config.xml": {
+          "kind": "file",
+          "sha256": "f0c3d9603fa1428de5e6fc7173bad61f74af17874a1fc152bec78ee2bfd9c7f6",
+          "mode": 420
+        },
+        "res/values/strings.xml": {
+          "kind": "file",
+          "sha256": "8ab8873703db13f939c848e3ea65be4b1fb9c6b0ba26616ebdf343abc362748b",
+          "mode": 420
+        },
+        "res/xml/power_usage_summary.xml": {
+          "kind": "file",
+          "sha256": "280467f64734f8da0e894fd234174dd7513a52d87995f3ac98d3e617dca43981",
+          "mode": 420
+        },
+        "src/com/android/settings/biometrics/fingerprint/FingerprintEnrollEnrolling.java": {
+          "kind": "file",
+          "sha256": "7887e6cde99c0ce05d9c8636710e3c31a2be4409f1f04dd032db6398d8e04a5c",
+          "mode": 420
+        },
+        "src/com/android/settings/biometrics/fingerprint/FingerprintEnrollFindSensor.java": {
+          "kind": "file",
+          "sha256": "cb4314a432d5a448c015d23606eff53558ffc68c84992016cf255c723e6466a1",
+          "mode": 420
+        },
+        "src/com/android/settings/connecteddevice/usb/UsbConnectionBroadcastReceiver.java": {
+          "kind": "file",
+          "sha256": "6e44eb68f674e484b0f9d8e1b74abad5eec2c4cf9021f20e38633638beecef50",
+          "mode": 420
+        },
+        "src/com/android/settings/development/OemUnlockPreferenceController.java": {
+          "kind": "file",
+          "sha256": "7bd741c97f53c6c427019e5165b78270f126f8e80794bd16a6a9f7c4b5cc71f9",
+          "mode": 420
+        },
+        "src/com/android/settings/wifi/WifiConfigController.java": {
+          "kind": "file",
+          "sha256": "ba338bc61309cafe52a1636dd6736ab1201feef3ec903f7313a2c04f8b7f7eb5",
+          "mode": 420
+        },
+        "src/com/android/settings/wifi/WifiConfigController2.java": {
+          "kind": "file",
+          "sha256": "2d30ce8ffaf06359684fb48934418e0ca7478457ffc9ce75e21036d992064ef7",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/Bluetooth",
+      "name": "LineageOS/android_packages_modules_Bluetooth",
+      "base": "03cb8e33c1613feb45d13dd1af1940e1c0149446",
+      "patch": "patches/0013-packages__modules__Bluetooth.patch",
+      "sha256": "928aafb200204333dc68b20bb35a88c7ae51ea5d831a1b2ba4f4e9be31808ed6",
+      "expected": {
+        "android/app/src/com/android/bluetooth/hfp/HeadsetStateMachine.java": {
+          "kind": "file",
+          "sha256": "1aae069295c694debc1f3f28ed85d8433e0c04590198b8c1a046b16a527d1cfb",
+          "mode": 420
+        },
+        "system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc": {
+          "kind": "file",
+          "sha256": "1be403db6c3d9cb75ad118058723d35301a195242836874385a9ad65ba0ffd01",
+          "mode": 420
+        },
+        "system/audio_hal_interface/aidl/a2dp/client_interface_aidl.h": {
+          "kind": "file",
+          "sha256": "0f31607f89051017010125006116388a8eba8a3d6e5918f58d417f09342218d7",
+          "mode": 420
+        },
+        "system/audio_hal_interface/aidl/client_interface_aidl.cc": {
+          "kind": "file",
+          "sha256": "a8fcb5e0cf612eb72f62d1b6a6d38025ca875f8187309f4fb182f40988522274",
+          "mode": 420
+        },
+        "system/audio_hal_interface/aidl/client_interface_aidl.h": {
+          "kind": "file",
+          "sha256": "3a2d72b68e4535254e8aecb5b0217467477de1c47138e3eb595ec9b61538fa22",
+          "mode": 420
+        },
+        "system/audio_hal_interface/hal_version_manager.cc": {
+          "kind": "file",
+          "sha256": "f6901637a5799ef5f6c4fb36e63a7c575c28bd0bcccfed2d939e717e7777a2d2",
+          "mode": 420
+        },
+        "system/btif/src/btif_a2dp_sink.cc": {
+          "kind": "file",
+          "sha256": "9af22b96705fef2893a7a169ae380bd73eb112da5c738a722d3d700b3371a5e0",
+          "mode": 420
+        },
+        "system/btif/src/btif_a2dp_source.cc": {
+          "kind": "file",
+          "sha256": "2c51100b1b1e52709c5e79de618348e25e6666043ca7a3821f47cdcc67fe6fa6",
+          "mode": 420
+        },
+        "system/device/src/esco_parameters.cc": {
+          "kind": "file",
+          "sha256": "17bf000ac3d29708c51dcadd67b9b0dd0bef8042829f1f63c9bdef1e09e6c15e",
+          "mode": 420
+        },
+        "system/gd/hci/controller_impl.cc": {
+          "kind": "file",
+          "sha256": "1d554f7671039c9ca2ed3b1d0507697c60bb2b34f42ffcfa1b0702b4a6992639",
+          "mode": 420
+        },
+        "system/gd/hci/hci_layer.cc": {
+          "kind": "file",
+          "sha256": "91772a4fa54ea2ce5d58586ef569204dd60a176caee2df9c40d8455af4e2d0e9",
+          "mode": 420
+        },
+        "system/osi/src/alarm.cc": {
+          "kind": "file",
+          "sha256": "8f952d23e011c6a0b0efdb96219aadabe27a04ff0f0933273361477789192ecf",
+          "mode": 420
+        },
+        "system/stack/btu/main_thread.cc": {
+          "kind": "file",
+          "sha256": "c38feb13c69daf505cf7f9705d18c31408dba72aed038af7c12b90de7792daf5",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/Connectivity",
+      "name": "LineageOS/android_packages_modules_Connectivity",
+      "base": "c9f3e7795256bd4a3f99d02e604e24fd1552c2b3",
+      "patch": "patches/0014-packages__modules__Connectivity.patch",
+      "sha256": "e3ea8abcf69df493079cefe1e5b0f64d443a1a052ac080dc2a8ee87b0961ee64",
+      "expected": {
+        "Tethering/src/com/android/networkstack/tethering/Tethering.java": {
+          "kind": "file",
+          "sha256": "2548898fa9f783de14f503042c3cfc31c9878c9dd24a7650c8349b19022e3bf1",
+          "mode": 420
+        },
+        "bpf/headers/include/bpf/BpfMap.h": {
+          "kind": "file",
+          "sha256": "c58fc43ca62d670d42fdf44669439ff8a91374053c9a40cdad07a5611f419605",
+          "mode": 420
+        },
+        "bpf/loader/NetBpfLoad.cpp": {
+          "kind": "file",
+          "sha256": "dfc8dc6476e11c0d6dcd8d0618ee9440b87416df02122560135193101b1777f6",
+          "mode": 420
+        },
+        "bpf/netd/BpfHandler.cpp": {
+          "kind": "file",
+          "sha256": "fa2321c98ffeac2f54c102871d28aa349c976bf7502cda44556cd06b0bf358be",
+          "mode": 420
+        },
+        "bpf/netd/NetdUpdatable.cpp": {
+          "kind": "file",
+          "sha256": "ff0e353cee24d1796a752dc1a94099c88d591f3698d2ba66700291cd7196156d",
+          "mode": 420
+        },
+        "framework/src/android/net/BpfNetMapsUtils.java": {
+          "kind": "file",
+          "sha256": "361e489ddb8cf60fa6599b88716dfc5fab5e412a635b073ae4cfa0b95189eea1",
+          "mode": 420
+        },
+        "framework/src/android/net/NetworkStackBpfNetMaps.java": {
+          "kind": "file",
+          "sha256": "9ec432994f79179f742f22813096a98c631c9afe414ee9fc3d27192d6144503f",
+          "mode": 420
+        },
+        "service-t/jni/com_android_server_net_NetworkStatsService.cpp": {
+          "kind": "file",
+          "sha256": "7283408ee413fc4123f4066ca31eb5d77f0e68d77ee6761d0aea6e2d9fdb5883",
+          "mode": 420
+        },
+        "service-t/native/libs/libnetworkstats/BpfNetworkStats.cpp": {
+          "kind": "file",
+          "sha256": "3357a157751dd1e30d8bc457c41dcb37875de3173f4387ed607f39086e127f27",
+          "mode": 420
+        },
+        "service-t/src/com/android/server/net/NetworkStatsService.java": {
+          "kind": "file",
+          "sha256": "4d67a8ee7107063a51811327e0973649722bd870ea2a27c06731aaac714b7a80",
+          "mode": 420
+        },
+        "service/jni/com_android_server_connectivity_ClatCoordinator.cpp": {
+          "kind": "file",
+          "sha256": "cf95e3510d12c2c3105426601306620c806a0c7f442dc76988a6896d10ad33fc",
+          "mode": 420
+        },
+        "service/src/com/android/server/BpfNetMaps.java": {
+          "kind": "file",
+          "sha256": "c15989ad0d00034d459a18820ad08293d4193cfabf831d73c3160168cac88241",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/Wifi",
+      "name": "LineageOS/android_packages_modules_Wifi",
+      "base": "8e08d5bf50bb82fa66aab3d1e9e224dd2489955f",
+      "patch": "patches/0015-packages__modules__Wifi.patch",
+      "sha256": "1230b26eae03866a7b4614ddf7382a9eb477f30875795ca77590037d11dfccb8",
+      "expected": {
+        "service/java/com/android/server/wifi/WifiGlobals.java": {
+          "kind": "file",
+          "sha256": "fa90361010f06718459fb970482fb1d29b5a280d8ccb5b4b7ff7334efc5a8cc7",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/adb",
+      "name": "LineageOS/android_packages_modules_adb",
+      "base": "e7ed41a85f5a0a8c9db0ed7ba21c6ebd277b5db6",
+      "patch": "patches/0016-packages__modules__adb.patch",
+      "sha256": "f641bbbbe0a1205e4d5706cdc31b0b7a69a1df20b0e7568c6b8105535727e00a",
+      "expected": {
+        "daemon/main.cpp": {
+          "kind": "file",
+          "sha256": "00916ead28c13019b945562f5024710337273c5aa258d1fb50ed83d1d575a17e",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/bpf",
+      "name": "LineageOS/android_system_bpf",
+      "base": "6c5f4f865220e27cda2a9f4210023a7a10f5bafc",
+      "patch": "patches/0017-system__bpf.patch",
+      "sha256": "fbc6daab43b15578955dc4b0043f8c8c6e77e428d73e728c5e8f886d8a596b59",
+      "expected": {
+        "loader/Loader.cpp": {
+          "kind": "file",
+          "sha256": "b788637600975698ecf34846aad16897aab58c5118739c2f9a8ebc810d50d6f9",
+          "mode": 420
+        },
+        "loader/bpfloader.rs": {
+          "kind": "file",
+          "sha256": "7de2847e850760cd8e7a22f3b763291c1218492f050675bb04a492b0415c8f18",
+          "mode": 420
+        },
+        "loader/include/libbpf_android.h": {
+          "kind": "file",
+          "sha256": "1c0fb96fba05e278ed29768a10ccac9b72e1c42257159873f38cb26e3ea3a68b",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/core",
+      "name": "LineageOS/android_system_core",
+      "base": "eb2de7321317226bbc1951382b3171fa59bb4d1d",
+      "patch": "patches/0018-system__core.patch",
+      "sha256": "1d31d23d4042e7ac5834c0a85ee065f3405de82aea7e3493aed9dd8e192c28eb",
+      "expected": {
+        "fs_mgr/fs_mgr.cpp": {
+          "kind": "file",
+          "sha256": "5bf27656d4f604a8911d144ee41a2a748342748deb7165db7a6951f38eef685d",
+          "mode": 420
+        },
+        "fs_mgr/libfiemap/image_manager.cpp": {
+          "kind": "file",
+          "sha256": "b297d35082029d0a7c1578f7d0312ef55dcde7f397521db6664303534f26ea06",
+          "mode": 420
+        },
+        "fs_mgr/libfstab/fstab.cpp": {
+          "kind": "file",
+          "sha256": "e7daf1bdadc6cca31a74383ec6c4b695d60b87260c171b9126d8f121c63cdfd0",
+          "mode": 420
+        },
+        "healthd/healthd_draw.cpp": {
+          "kind": "file",
+          "sha256": "06b16c009e2480ea93db6403fe7d4a54d00a9a7814feadcfed4acfaddba374ed",
+          "mode": 420
+        },
+        "healthd/healthd_draw.h": {
+          "kind": "file",
+          "sha256": "d0e130d8fd0a334280a37aa73f44c6fc0537d7eebe6b4680b6cf714c5698bfcb",
+          "mode": 420
+        },
+        "healthd/healthd_mode_charger.cpp": {
+          "kind": "file",
+          "sha256": "02a14eab9ccb1bb5946f1ebb8ec2f1ea6180e7401632b89b18ec25aa3b0f73f7",
+          "mode": 420
+        },
+        "healthd/include_charger/charger/healthd_mode_charger.h": {
+          "kind": "file",
+          "sha256": "c9228220934842d86c1ac7a1411917650f3b0fc7c909471aa9efdb06e2aad2df",
+          "mode": 420
+        },
+        "init/action_parser.cpp": {
+          "kind": "file",
+          "sha256": "6fa17216e85726f3c65c27de22647e9c736542c99a4f170f56058535fb056a5a",
+          "mode": 420
+        },
+        "init/builtins.cpp": {
+          "kind": "file",
+          "sha256": "1a8019d275a0400b924ff7334b6e285ae171c60de93fff5f2bbeab7f1595650b",
+          "mode": 420
+        },
+        "init/first_stage_init.cpp": {
+          "kind": "file",
+          "sha256": "dfbc17dcf0969cfbe6a17cb03f88dcc8833df14b08fcde5aebc4c2dfd56ee62a",
+          "mode": 420
+        },
+        "init/first_stage_mount.cpp": {
+          "kind": "file",
+          "sha256": "0de081bf23243e218936ad37f7b8c739907cad7bbf6307610069f3c0a3698aea",
+          "mode": 420
+        },
+        "init/property_service.cpp": {
+          "kind": "file",
+          "sha256": "a5baf554b4451f9f88265a00a5035b3980962d308363629fd8883548240935c5",
+          "mode": 420
+        },
+        "init/reboot_utils.cpp": {
+          "kind": "file",
+          "sha256": "49ffaa22e06389e5a840d7265e5e8a4f9cd01b8b38a7402b945554164f1caaaf",
+          "mode": 420
+        },
+        "init/selinux.cpp": {
+          "kind": "file",
+          "sha256": "c6a7ecf77938467fbcf5d9139ce896406c333892c7d2ce0203b338eee76b7e1f",
+          "mode": 420
+        },
+        "init/service.cpp": {
+          "kind": "file",
+          "sha256": "779b355b12a9428ab196ebf903f9b2e555a6f249b3bd43f5059d2be1a8d90cdf",
+          "mode": 420
+        },
+        "libcutils/fs_config.cpp": {
+          "kind": "file",
+          "sha256": "a1e73de7a61ad21b885eebb4d5111149d90bc5da50056a5a1010141c95dfecba",
+          "mode": 420
+        },
+        "libprocessgroup/setup/cgroup_map_write.cpp": {
+          "kind": "file",
+          "sha256": "5c8aa264a441d561e063470000765b8a000a88f28897c02c98f894f26e0f10cd",
+          "mode": 420
+        },
+        "libprocessgroup/task_profiles.cpp": {
+          "kind": "file",
+          "sha256": "f722d2a3f7489d229a4712853c607b0daa71c958910f31f8ac704471f7b61f67",
+          "mode": 420
+        },
+        "property_service/libpropertyinfoserializer/property_info_serializer.cpp": {
+          "kind": "file",
+          "sha256": "f885ba3db0b5fe71026c2857106441046d522d0617bd1d52aff3570d1ecbed92",
+          "mode": 420
+        },
+        "rootdir/init.rc": {
+          "kind": "file",
+          "sha256": "138b813beae9a51f6a9f4b23959e0716ee00a7987a4d165eb4f7fd21810fa5ee",
+          "mode": 420
+        },
+        "rootdir/ueventd.rc": {
+          "kind": "file",
+          "sha256": "86b675527387a931bfd399ef5f9202e70908e4362bd396c5ae87aa56e392d024",
+          "mode": 420
+        },
+        "sdcard/sdcard.cpp": {
+          "kind": "file",
+          "sha256": "6a640af16685b3bbd1ab544c4eba231bb0ab005f9288e662e04b3f803d1f33b7",
+          "mode": 420
+        },
+        "watchdogd/watchdogd.cpp": {
+          "kind": "file",
+          "sha256": "36909b4939a0d4d6bd72a0c7e088611e7a93206c8aaff6e3dd978b8e8636273c",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/extras",
+      "name": "LineageOS/android_system_extras",
+      "base": "52c6bff46ba509eae3ae016e6cd7724d377d5da1",
+      "patch": "patches/0019-system__extras.patch",
+      "sha256": "1ebd4b755a6841d40fccc21d45ef4e21bf446fc81e8784e0d65a88b7babd5357",
+      "expected": {
+        "bootctl/bootctl.cpp": {
+          "kind": "file",
+          "sha256": "d12cf541409be1530e5168a3f0d3d07b24a6ab8c186f1fc68d1e96fa5eef7360",
+          "mode": 420
+        },
+        "libfscrypt/fscrypt.cpp": {
+          "kind": "file",
+          "sha256": "0eb3e9817746253a67f5a92a289a8fe0f91f2d9888f1568d792d8bf14d5c67b3",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/netd",
+      "name": "LineageOS/android_system_netd",
+      "base": "796eaca5ab9dfdd87751c51bb71fa3f26c87d034",
+      "patch": "patches/0020-system__netd.patch",
+      "sha256": "5c7a9b176c1e4a3e291f2d7820626d9f8ce4b6ee86fb3d947db9d3ddc4478c39",
+      "expected": {
+        "server/Controllers.cpp": {
+          "kind": "file",
+          "sha256": "9f43f13e1b9ae220aba7ddd6c82caf48a32b22b143fcc43d8fa54558af2419cd",
+          "mode": 420
+        },
+        "server/TetherController.cpp": {
+          "kind": "file",
+          "sha256": "5d6e6ed4ce9a12887699cd7b206f7cce080e1ed44fa6b3e38a80b7af0d471ca2",
+          "mode": 420
+        },
+        "server/main.cpp": {
+          "kind": "file",
+          "sha256": "03f2dc8d8a0a6bbb0db235fd80c767fc5777d3d71187f7c5710711b034f2f79a",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/sepolicy",
+      "name": "LineageOS/android_system_sepolicy",
+      "base": "885cc500f6078a766d1f6def5ce4c06c55841773",
+      "patch": "patches/0021-system__sepolicy.patch",
+      "sha256": "3ec03801a278b1f632b8d2e4db8ab6d2debcb8a7a6a3d31529815946a0034d4d",
+      "expected": {
+        "Android.bp": {
+          "kind": "file",
+          "sha256": "534bfa16d34ea291ee7337156ab0b3d19605ff3a83c743811aea945be5fa08a0",
+          "mode": 420
+        },
+        "build/soong/policy.go": {
+          "kind": "file",
+          "sha256": "e5baeb1ca1868a96690e3772718fdea8a31597ab1153dde61bc067d321ba3531",
+          "mode": 420
+        },
+        "build/soong/service_fuzzer_bindings.go": {
+          "kind": "file",
+          "sha256": "6aec3d2fe9d71fc818486ec82230652a8e390bd4abbd62c7ceba3ba4cc6bf522",
+          "mode": 420
+        },
+        "compat/Android.bp": {
+          "kind": "file",
+          "sha256": "2b15931b9232bbf0182993a9606d9a59bc5eac3d08376453be502845f3e5dda2",
+          "mode": 420
+        },
+        "compat/plat_sepolicy_genfs_202404.cil": {
+          "kind": "file",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "mode": 420
+        },
+        "contexts/file_contexts_test_data": {
+          "kind": "file",
+          "sha256": "6e46b697bb39a7023b71a68dd7adde90a5a0c19e9d1e41bb6e9ae28948f67738",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/Android.bp": {
+          "kind": "file",
+          "sha256": "5a4b6816d0f1470440e5b22f71d8975aa62b508cfa8976102e55bef61390156f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/access_vectors": {
+          "kind": "file",
+          "sha256": "73ebfc117bcc6f89e812646c660d7225d4a8d5874e8ff98b5d6c30193da04cba",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/adbd.te": {
+          "kind": "file",
+          "sha256": "41ca4b5cf0314e835c0d09ea38845bb611c1768e1bcae769edec9f3a40d2ddae",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/app.te": {
+          "kind": "file",
+          "sha256": "36eeda7174de36d954d0f5589547b70d3c4fceab4d8243ef803b6ded3aca3e29",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/app_neverallows.te": {
+          "kind": "file",
+          "sha256": "b9bc2778e52c305d2f475fc7776cbe8200eacbf1e8224c6154b02b27fa5ffe13",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/asan_extract.te": {
+          "kind": "file",
+          "sha256": "b3c88167cec26b32342b456e6091b18c60ac89d054cbcad7b86dc90085789790",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/atrace.te": {
+          "kind": "file",
+          "sha256": "149865aaf4e8cb990adfe3031ca140c0919e2472c51b55f0434d7764388cda70",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/audioserver.te": {
+          "kind": "file",
+          "sha256": "4e023018511ea3c6fe7b62f9f3ef3f71f8421272a0bbd5a725630ffd30094a98",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/binder_in_vendor_violators.te": {
+          "kind": "file",
+          "sha256": "2142a7ef9b22c461df90a00e79ab778253958b450797213567c2e06ccedb9190",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/binderservicedomain.te": {
+          "kind": "file",
+          "sha256": "c7ee5f91d8863d9a5d7101c471cf2cb5699fc50c14f870b10e4cd2d1d5e5e85c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/blank_screen.te": {
+          "kind": "file",
+          "sha256": "d8447a6d544acff1847accf746b90b346f73ae570b5acbd928d75e35c9fc8f8b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/blkid.te": {
+          "kind": "file",
+          "sha256": "09d99f4c8e7aaa20649fd5371afd576e3eeba9d07a6a531970e2ed18baf80eb2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/blkid_untrusted.te": {
+          "kind": "file",
+          "sha256": "537d7b18964f3c89f911d6d98ac239963941f02a8903933dfac4c46675f8c4d1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bluetooth.te": {
+          "kind": "file",
+          "sha256": "247d5aaa1bffdb10c544170e90cbe16c49a2c8711a4fbf0423bdb6018f3c6251",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bluetoothdomain.te": {
+          "kind": "file",
+          "sha256": "a9cc20171e4db59f3a38a0cdf21d6e9f38c7b227152eac557d9d6b7b0618992c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bootanim.te": {
+          "kind": "file",
+          "sha256": "0fd07dcbd2b96a6db9fb6d4d0585d117edde901a1e5124e37718f1485e5098e1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bootstat.te": {
+          "kind": "file",
+          "sha256": "60daf654155f14a741fb39d488c778e6d295b4dcba3e093fa75d38da22e8e28e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bpfloader.te": {
+          "kind": "file",
+          "sha256": "c088fb61c8b4dc28846c4ea79c44520637bc74a28fffb723464e3c8a03d47ba1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bufferhubd.te": {
+          "kind": "file",
+          "sha256": "4fb1124b4805ee7af1e2f9b6dbe81b03682fe9a1f5e38aa4c805f45ee11e8375",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/bug_map": {
+          "kind": "file",
+          "sha256": "478d3ecfbc18e78157527b36d41092c906c0adcddabbcd5b22f327c6669a624a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/cameraserver.te": {
+          "kind": "file",
+          "sha256": "dcc73928064d13295060bd617abbfc136f8288689a8ab9c47ec28347337b56a4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/charger.te": {
+          "kind": "file",
+          "sha256": "2f6e73f489db864d56468c6c57dd6eead37f2f40b9e6d26b8c03fd1fdd72bea7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/clatd.te": {
+          "kind": "file",
+          "sha256": "fbd2dddc3c8d3fe166ede0460469cc99b3c5f6c89e47cdb17f8d5035e23e1f33",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/coredomain.te": {
+          "kind": "file",
+          "sha256": "a58c6056d1cb5e52978fe7650d05c54bd174de6a2120643db0bf439beb61ec4a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/cppreopts.te": {
+          "kind": "file",
+          "sha256": "f92eda84f5871058c7ac571a5f96099cd71e814c813469c976baf6cdc8aa91f9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/crash_dump.te": {
+          "kind": "file",
+          "sha256": "4b7325e14929c77b2d2f07365a46883d33e6b7f66de02de21058b878e34960cc",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/dex2oat.te": {
+          "kind": "file",
+          "sha256": "5c1e9d6ce989e56481a9e93ba8e20a5b917dce1bf4b0fc4168ce2236d046779b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/dexoptanalyzer.te": {
+          "kind": "file",
+          "sha256": "b408676fb92cebec63932bb7f78a185e1ea930ef8ad7434f4c3479a290a92ba9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/dhcp.te": {
+          "kind": "file",
+          "sha256": "22d148a2957d9d442aed4a12a1b59768b45bb10afb988060a771d58a534406a5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/dnsmasq.te": {
+          "kind": "file",
+          "sha256": "434c86e9ace194b3fffc0984a197d370e004836c1dd97f43ca68b835327114bc",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/domain.te": {
+          "kind": "file",
+          "sha256": "f1754833c78201a80a707c85cf8712ccd53ddbf51f86ba4a3be161ea1ecd6534",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/drmserver.te": {
+          "kind": "file",
+          "sha256": "00431991fcb32cac4b9bc55f2a840f6e88537a9de563697dcff56c7f79f0eebd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/dumpstate.te": {
+          "kind": "file",
+          "sha256": "0db50b5805b1599e70df5a9066210d68f96335631171d6034daa5f3a3ad3db70",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/ephemeral_app.te": {
+          "kind": "file",
+          "sha256": "268698e5427f8ce67755281f3fe8fe0914e5aa12eea557dd439586b33546e875",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/file.te": {
+          "kind": "file",
+          "sha256": "2ab1b5cdcda8e6e3d67077f5d0f33da63642910e72e0667725b1558da1f4c4e5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/file_contexts": {
+          "kind": "file",
+          "sha256": "f0f8c632223a7115c0986c8ecc2950a12f492f436999f4704994ed6227f5e9ee",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/file_contexts_asan": {
+          "kind": "file",
+          "sha256": "765c3ab989f462816a78727976efedbb94f2a360f9becb9d9a495b55c3ec477c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/fingerprintd.te": {
+          "kind": "file",
+          "sha256": "1499df576556d71a156bc07d86a7dc37508acc0f038a709379188ba4379a3ff4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/fs_use": {
+          "kind": "file",
+          "sha256": "56969d7f567e77bf79fada58c6121e701e9eff72ac9f877d7830bdaff9480d46",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/fsck.te": {
+          "kind": "file",
+          "sha256": "484e616c55adb391efe905ecafa51a82085fe8d20e84e60641150453e69ff966",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/fsck_untrusted.te": {
+          "kind": "file",
+          "sha256": "a487f15cfd8d2e8ee93353da0d766f5f86b62b115de5e2d90380a561d94a6828",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/gatekeeperd.te": {
+          "kind": "file",
+          "sha256": "dd6b06401f621c1fcf1c19a757aa8998deab07722d5fc212e7a8412f1977bdc3",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/genfs_contexts": {
+          "kind": "file",
+          "sha256": "5903e344fb166f1688b2d4701bdbdcd6b2e4d80001b051fc8b055c3592b71612",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/hal_allocator_default.te": {
+          "kind": "file",
+          "sha256": "5026a8bc607a1ba635e66396d4b91249b1ff236b2c68782bdaf2663544e11e09",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/halclientdomain.te": {
+          "kind": "file",
+          "sha256": "4f2d76873fcbb4d2632cdc8d65a87aaf2307e000994f42d9ac6fa616391cf970",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/halserverdomain.te": {
+          "kind": "file",
+          "sha256": "411698d698161bd46b5f2c70f0a06f0a70e18c924735ff871cb40dfa365ddf1b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/healthd.te": {
+          "kind": "file",
+          "sha256": "a68b97e7c1235ba9dc335ea3949a1edc4f72127b947e4eeb832f8e7f10ca54df",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/hwservice_contexts": {
+          "kind": "file",
+          "sha256": "852ec77ce415d58b891876eb65cfdcfb2eaedc56302a55630670437282a3fbe7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/hwservicemanager.te": {
+          "kind": "file",
+          "sha256": "57778f0a89707df247eceb70fe4c2501b4ab998a3d2c9efb6663788a1153b2c9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/idmap.te": {
+          "kind": "file",
+          "sha256": "47580659ff81f587301237066294bdd7a6baae958dd0b6f5a49b2fc6ee00df17",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/incident.te": {
+          "kind": "file",
+          "sha256": "640b3f6779f61155a4c89d24e3e03ec4447be4d1160aa9238ecd905383d86ac3",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/incident_helper.te": {
+          "kind": "file",
+          "sha256": "44007ac1b0b292308edb566779a8eaa8851520d1f305f5a3ad90e031991317d2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/incidentd.te": {
+          "kind": "file",
+          "sha256": "5fb6622c4e379263c50acfe5822c12a197bf6686a9bee4a1754b15a0256c681b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/init.te": {
+          "kind": "file",
+          "sha256": "7bfef9e6687693ab3a6082d8af9599c1e7b0ac85d405f8aa7ec0f55094c72ae4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/initial_sid_contexts": {
+          "kind": "file",
+          "sha256": "c6062ea3690f13c60c665063d58bcc246a736c103e770bc7008cfb25606e3f16",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/initial_sids": {
+          "kind": "file",
+          "sha256": "b65322809825c3f8425f805fced74fb25981e71b7602450584e83ff800fafad7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/inputflinger.te": {
+          "kind": "file",
+          "sha256": "15009df396ac3bce3902b53db49ea9603326188b10ae4db718ca4398a715f72d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/install_recovery.te": {
+          "kind": "file",
+          "sha256": "50f5cb983bc4574ed0e45bb988d894eb67fecce2a287d07d7bbdd4d489df42ce",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/installd.te": {
+          "kind": "file",
+          "sha256": "30d13991adf85410419bc981dc932820b453fd6c6ffbf55603bbc3033acaa968",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/isolated_app.te": {
+          "kind": "file",
+          "sha256": "07a6008cfecca9519ec1b7a3dd0e22ed10e3ad15d9381138085200e481934d56",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/kernel.te": {
+          "kind": "file",
+          "sha256": "1e2ff43b39a2ec1477b8e5bd697ecc342182091b9aa168754795a595c444e1bb",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/keys.conf": {
+          "kind": "file",
+          "sha256": "ac92337b9fb1ef6180bc3594f4b2fdaf6bb6a49d582cde15f1be3e86aa0a6948",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/keystore.te": {
+          "kind": "file",
+          "sha256": "fc8d3100fa12d1fe846b4fffbccf2518eb0284b149012e57a7f7e5ed54dd2845",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/lmkd.te": {
+          "kind": "file",
+          "sha256": "e4ed59e2e998336616a6169dca56cc7de1e8bee70ee95575e998d0dbda2363e2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/logd.te": {
+          "kind": "file",
+          "sha256": "cf7de8c49b4ed6808bfbdfca59141efe574267d8089414a31dce8f7adf23c236",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/logpersist.te": {
+          "kind": "file",
+          "sha256": "b85768e9f5cc7a97f2258f36bb703405018f5241b626dcc1d67b47d904c296ab",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mac_permissions.xml": {
+          "kind": "file",
+          "sha256": "965ebf9e21ef6e2ba801ecdbbaa039594871b3098b43b59bd3c13aeb42b9611c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mdnsd.te": {
+          "kind": "file",
+          "sha256": "ab228bd305801ffeb41856d1ce75d1c3c790b7705798dfce35b2a6493322f601",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mediadrmserver.te": {
+          "kind": "file",
+          "sha256": "ac26c22f254315fc9025cf856f1cbcb978235f3575d97c345bd4bd649b04bc12",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mediaextractor.te": {
+          "kind": "file",
+          "sha256": "72649763e8a82b7eea59f49dc727b52d0b16a136706e53722c975ed147bfd2b9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mediametrics.te": {
+          "kind": "file",
+          "sha256": "a939156f3eec5feff305c4d836d9cddaf94049a019cdc463a55f7e5817fdabf1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mediaprovider.te": {
+          "kind": "file",
+          "sha256": "989a6e6b2b51fbaaa84f1bab274c3b83b2af2d3c6690382a9e8422f8eb0165e8",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mediaserver.te": {
+          "kind": "file",
+          "sha256": "be82a0096f5d2b40bb663dec906c0057778acc73c72a0c02e0ba60801a462bc1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mls": {
+          "kind": "file",
+          "sha256": "666104d9029d09216c5133726497f45d1a49794e336717193426498dbc6d8657",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mls_decl": {
+          "kind": "file",
+          "sha256": "f7549d8c5569deaa3cee8c9decad170e9a7aae349a68e5e0602db7825417ba14",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mls_macros": {
+          "kind": "file",
+          "sha256": "c5822b44c9a53ab6dda8f4ce79bbf90a9d97fc9ab43849ef0f4207bc86e048d5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/modprobe.te": {
+          "kind": "file",
+          "sha256": "d3174958d3591c745e10b11acdf511e0ca001a469697cf97c4ecff4642098355",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/mtp.te": {
+          "kind": "file",
+          "sha256": "3e3d3470ad8f942d07e6ed822b6639cd275d8534cac4ce93cf4153a78dfaf82f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/net.te": {
+          "kind": "file",
+          "sha256": "531e0d85af1fd533000c0e1f8fa98d920083c978c16fe5a5929ac5c9c1c8297e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/netd.te": {
+          "kind": "file",
+          "sha256": "18b48cf7b35cd9844d7291ffd65ed2783ab21c210a15c99d8ef5f9cfc9a0893e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/netutils_wrapper.te": {
+          "kind": "file",
+          "sha256": "2ec46d804694d5db39480b4e2d99a88e1136d1b580498dad8837af9e8627de3b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/nfc.te": {
+          "kind": "file",
+          "sha256": "7468512cf3eaaf46775dd5398cfd89ca2a2acfae1f3ca635739957e09175b3b2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/otapreopt_chroot.te": {
+          "kind": "file",
+          "sha256": "84c7ed9fd553239f1ac644d8a5d0400b114f10de3f6b417beb19bae52547f384",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/otapreopt_slot.te": {
+          "kind": "file",
+          "sha256": "118f723c04d36e3e195c47c4b9895b8b9f51c9bc3484be00ec24e1b1b8656313",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/perfetto.te": {
+          "kind": "file",
+          "sha256": "8cf96c53085f5deb7c179082a99ac4bda57f9b74b155baa95b99d8f72f12e0e1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/performanced.te": {
+          "kind": "file",
+          "sha256": "d697fed933905e86f4f027ce1f004740820f0ee6ddfbc08cebd8dc4c9f0e6c8b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/perfprofd.te": {
+          "kind": "file",
+          "sha256": "f6bb10de51b24209f7e62c4d72a39d91be741816e476a96b14c589629815475b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/platform_app.te": {
+          "kind": "file",
+          "sha256": "efcaeabe11cd36005bde2bb65969edc18e627c92ce45c3019d19dd137210f91b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/policy_capabilities": {
+          "kind": "file",
+          "sha256": "93af0d2887030d44abd53df6d9c84b101f6c7163854096bbe99ada84434c7c71",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/port_contexts": {
+          "kind": "file",
+          "sha256": "5b6490583e17d5d9e6cccbebd389403f7a9924c3f1e0c583609b6d68a842495e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/postinstall.te": {
+          "kind": "file",
+          "sha256": "a724b9c3c794fde78627b67d5c49222506da2a35a5d313f03d3a8550b042196d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/postinstall_dexopt.te": {
+          "kind": "file",
+          "sha256": "63cbd27e682979fa063158dd309e0b2f03983866be0a231a8f08cca4eed6b326",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/ppp.te": {
+          "kind": "file",
+          "sha256": "da8fb0c2edbaf047cf1e79fb74da22b7a68bd2efed742c420baf7ee142394c84",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/preopt2cachename.te": {
+          "kind": "file",
+          "sha256": "a6cc7bbf5c8c2ea136a7604c3968a455ee2475547f4506df6c4d352139215358",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/priv_app.te": {
+          "kind": "file",
+          "sha256": "f0b34ee82cea96ac4fca1ef48a413ac5a98c5af1c68a6f120bb15505a8b4740c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/profman.te": {
+          "kind": "file",
+          "sha256": "777b58af2c6294c5dec27a8e908e4140a783c28a001d38b33c1fe4f60d86d3b0",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/property_contexts": {
+          "kind": "file",
+          "sha256": "003de9ffc0366453bfe35a46aaf0670a53300927283e206f76e1757c868a2fba",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/racoon.te": {
+          "kind": "file",
+          "sha256": "2758d2ef46fe643fbb35488f8e72371efdd42950f1d02473aefb226520bd0ea0",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/radio.te": {
+          "kind": "file",
+          "sha256": "cda063fa0bb76f6b4e265a366823a4911a7cf025ac4ad34cb685bc2b7b0d1971",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/recovery.te": {
+          "kind": "file",
+          "sha256": "2d266618d453321ba93df5dae8feb0cf125c57b6e1fbb77bda89a563f6105e34",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/recovery_persist.te": {
+          "kind": "file",
+          "sha256": "a6439c7fe3a9d034450054d05da3562ed4c9a64e81efeddd3dffafdfd6958d69",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/recovery_refresh.te": {
+          "kind": "file",
+          "sha256": "97d4772a8ddef8f83b0e4f74c514c6ac83b9e55e9104002cfb0333d0eb3a0118",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/roles_decl": {
+          "kind": "file",
+          "sha256": "4241eb694ec396a73e9a0d6bfc9973400dcef8ac820a7e0cfe0f9cbf3673e6dd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/runas.te": {
+          "kind": "file",
+          "sha256": "5f56cd90faef00b87a1b5f11c3c300bc73f90c3f8f56f5bc1037b696dd742614",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/sdcardd.te": {
+          "kind": "file",
+          "sha256": "fef00b81a1140a3c0a2f87570acf2a511fc4bca4facc3f4a672848f37351a2c5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/seapp_contexts": {
+          "kind": "file",
+          "sha256": "04aec70e2960fb3643eb75bc9f91934d3823de5aab4fa1a36652489b94d6e373",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/secure_element.te": {
+          "kind": "file",
+          "sha256": "7ecbb299824fb5be4f5a131894b3d4ea4ae3182f42bd0751a9a59d4c86f2d407",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/security_classes": {
+          "kind": "file",
+          "sha256": "1e5e363adfb593078c48d1da39bcbbff63219787575636a7036868e0351b964f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/service.te": {
+          "kind": "file",
+          "sha256": "3df0921c8597bfec069fdbc78949562bd4924887eb090b3c2d67aee2fbc58bfd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/service_contexts": {
+          "kind": "file",
+          "sha256": "73cc38daa6ea57b35889f05bea6d5258234f4982140eae0d0db0090c891fdf77",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/servicemanager.te": {
+          "kind": "file",
+          "sha256": "f1562505201586c49bb811a9fee127d3edc9be2390635a652c5ea28f0150b9ea",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/sgdisk.te": {
+          "kind": "file",
+          "sha256": "8644295a913e80dcb39c62524dd0752addead9f1d018dd95b91b78c630e19b33",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/shared_relro.te": {
+          "kind": "file",
+          "sha256": "26eee565523ae7d3d8a811cb7015202e35f9fbcb588196931fccd6fcf088e8e2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/shell.te": {
+          "kind": "file",
+          "sha256": "2d75ee9b06e8caf9589e49881d9d5c0fdd2c599dfbcdf1966e369f97b6d767ca",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/slideshow.te": {
+          "kind": "file",
+          "sha256": "275253fe4d8b41ba25fa8ec8de067d470dd42cbc95f35ca3a19987a0bc973f87",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/stats.te": {
+          "kind": "file",
+          "sha256": "18ce114dce4585924ac5af88f02752b058397595f556b106688690e6acc9a3ae",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/statsd.te": {
+          "kind": "file",
+          "sha256": "71336b6458c9adb818b5d6531a8ffc507282e54c28692eb6994ce5957fe4397f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/storaged.te": {
+          "kind": "file",
+          "sha256": "cb6d500a1cb89f596c8bee8ec15bb907b007146f38b049cc5f7da9f768117f8d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/su.te": {
+          "kind": "file",
+          "sha256": "9598d174761a29aaff8ec2c91a7bbf52e3bef2151d521d6c72fc3e2628f22134",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/surfaceflinger.te": {
+          "kind": "file",
+          "sha256": "c3a6e485ce83dffc378a7507bcdc8e8fd253201583f96b5d534ce77dec1d78b1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/system_app.te": {
+          "kind": "file",
+          "sha256": "e8db8350fd6a0e6da6825b15ea8ad47c2c90d4cc44ba53efdf25ee2759b27b72",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/system_server.te": {
+          "kind": "file",
+          "sha256": "4c3b13a7e3688befc74ff6f32c9f7d2933eb0b7dd51c2b14549487a04c3f4dcf",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/technical_debt.cil": {
+          "kind": "file",
+          "sha256": "2473ac29e955384f21888612a0a222ae344940abcbfbe14ce19554a2778f2cd7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/thermalserviced.te": {
+          "kind": "file",
+          "sha256": "794d4be5ef78b1b663ee7f821a1ea0bf7438ed67cbde62ee49d58bbe9f5d08c3",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/tombstoned.te": {
+          "kind": "file",
+          "sha256": "1663a367a285345dac9ecd9deb8dc09a4d0573ea46c32a96e1c8d925d28a9f63",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/toolbox.te": {
+          "kind": "file",
+          "sha256": "476afd9a53e0970ff832216b467dff0b787be32ec3da816a432b6bc3956db442",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/traced.te": {
+          "kind": "file",
+          "sha256": "bf5fb9575c62940cb3da3cc11a4370f03899533cca740c29087b0d6b80cb5938",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/traced_probes.te": {
+          "kind": "file",
+          "sha256": "f5530e1618d54bef9bcbba4eccec2e576b9193282364acb128b35ec3a1b70fb7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/traceur_app.te": {
+          "kind": "file",
+          "sha256": "d6d85a16107c5b4b5c6af8931c668754d8a3b57f8997d6ff48d73dde1c7296f4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/tzdatacheck.te": {
+          "kind": "file",
+          "sha256": "1ddfcfc3a634cfcfe0fc7a7ddcb13afe1640743144e5a2832136e8a2aaec398b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/ueventd.te": {
+          "kind": "file",
+          "sha256": "3e80e7fae0d2fe0b0a9569312c6214339fe6d72b404268ba386f37fcf9ca2c2d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/uncrypt.te": {
+          "kind": "file",
+          "sha256": "e3d78c9159cf573e7535019bad44766f808e9b4ae3c9509d9c5a39d24ff73f5b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/untrusted_app.te": {
+          "kind": "file",
+          "sha256": "bed2f9f2360410f766ced3d1fc84e75c92de69e40ea4938389ce87a010deff44",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/untrusted_app_25.te": {
+          "kind": "file",
+          "sha256": "e8b8d215cccf56dfbdaeb46da1a4f4c8627c4158e18ecadcd0bfca6cc7c49787",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/untrusted_app_27.te": {
+          "kind": "file",
+          "sha256": "a34b79f5bfc6dca896a28a316af3634143967b4ff1442776f511282e33f6fdce",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/untrusted_app_all.te": {
+          "kind": "file",
+          "sha256": "723671f2eedbc7c1fa5207a9ba87e5a5121d8de108e9fd3e71c8e5f1ccd1f774",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/untrusted_v2_app.te": {
+          "kind": "file",
+          "sha256": "404a1ca9f65e0c5b607464710657245e38a02336ed7e3a033726d9a0fe82309f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/update_engine.te": {
+          "kind": "file",
+          "sha256": "3ae590b077444dc5de37ae1b2c01a4f3f5c10f2b5a32d0d3cd275fc62822515d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/update_engine_common.te": {
+          "kind": "file",
+          "sha256": "d30de1d1f71892cec57ac6749f1e4ff848446f1b999202cc26b529279e50d852",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/update_verifier.te": {
+          "kind": "file",
+          "sha256": "9f6a0b7928ae7e1aef917ebdb2f0da26844ba51c326eee11e1bc819a6d9fef31",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/usbd.te": {
+          "kind": "file",
+          "sha256": "b9b5b79a20a253a663a3fbd2685ab34175819faed147a93a05ae8a69e7db268c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/users": {
+          "kind": "file",
+          "sha256": "50043f480e4192a70733f660638446ce981fde673dd4b6e88841772d907e5447",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/vdc.te": {
+          "kind": "file",
+          "sha256": "69a6d51eb112f42b9ecf996a91bcec28461c4e503cc3d0d19bfd9482be6af76c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/vendor_init.te": {
+          "kind": "file",
+          "sha256": "2d60a619639f6dfe87351979c308a4cc8d10483f4b5bb4a61925c0056fba45f1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/virtual_touchpad.te": {
+          "kind": "file",
+          "sha256": "e099c211ad5a82d899c07cd87d3df498d244f6c58194fe9907390bebbb903052",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/vold.te": {
+          "kind": "file",
+          "sha256": "e677351c89f89e3f3683107c809c4c036c6f57f2837951464dfc0db08a976be6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/vold_prepare_subdirs.te": {
+          "kind": "file",
+          "sha256": "60a36d0ede85c53398ffa0c0bbc8f93a5ec161f0844e7edc6781df4dd7be4edf",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/vr_hwc.te": {
+          "kind": "file",
+          "sha256": "d2828a0203d33706c5ae76147652a2c81fb62d1c504f353f9ea3e18096aa0152",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/wait_for_keymaster.te": {
+          "kind": "file",
+          "sha256": "3e2d10325edecfd79c5a80217e386d8b0421c5f7263f1bea6571e1337e90a138",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/watchdogd.te": {
+          "kind": "file",
+          "sha256": "209789f27813aac32eacd2ec6f270b37cc19985d18e5f475bae1c1bd20907744",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/webview_zygote.te": {
+          "kind": "file",
+          "sha256": "57beee3f4804068429c8270cd6122ae7878a6ae664b5595dd69a351c31a0715e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/wificond.te": {
+          "kind": "file",
+          "sha256": "4bb928d52e850ecf9bdefeefa76715810d56b352b7fa00e0b4fe13c3245bab73",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/wpantund.te": {
+          "kind": "file",
+          "sha256": "be161ca0600c03dfda778fad959fd99620b90f4482996edcd675c07ac8706397",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/private/zygote.te": {
+          "kind": "file",
+          "sha256": "9088cd3feba6b0fa5fe4b1e690db387d5d86b6ab4661b5b33ea42af5c7749d26",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/adbd.te": {
+          "kind": "file",
+          "sha256": "4dfd7b4b0ce5bacb2802480d08102dc4a390826588101b23f49f7db3cf9f4a56",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/app.te": {
+          "kind": "file",
+          "sha256": "b2dfece3affb54a20d1f18c78f3c3d14e4321c5d9946f4a35d3d0995ac8574c3",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/asan_extract.te": {
+          "kind": "file",
+          "sha256": "d6a13cac7da2b8d2d39a2f128235a36ac15de768d06181cce58d0c7bffcda105",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/attributes": {
+          "kind": "file",
+          "sha256": "7958f4370574809b6f79fbc0bd4ca6c33c1863610e8298872c7bfced15b73a44",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/audioserver.te": {
+          "kind": "file",
+          "sha256": "58661f6534470e7ef90009b19e7e4c0fe06255ccb1460f8d6d2c30ae703aa93e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/blkid.te": {
+          "kind": "file",
+          "sha256": "988af8057d7a6852b37a3b1c48949d1f9e8345deea88d01ed9dd0285a5bedd48",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/blkid_untrusted.te": {
+          "kind": "file",
+          "sha256": "e9054e76eb657f82247c8285ca6e87a20ff1e3d21c699984ffbaaa8544719f71",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/bluetooth.te": {
+          "kind": "file",
+          "sha256": "4e935acdf2d2a4909ecb8170d985eff37f15e7db9ff0eae1d3bfa6cffdbdcf39",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/bootanim.te": {
+          "kind": "file",
+          "sha256": "20cf7b8724b641882cbc9152706b6352a2f5164dc3e3250db80ff37210355f99",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/bootstat.te": {
+          "kind": "file",
+          "sha256": "6d4a30f83f39e92a653a2bf5c44905551c531dc4ebdc69b7b4c5d8ec1b1144d8",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/bufferhubd.te": {
+          "kind": "file",
+          "sha256": "08327bf2ab2d9fe2cb0576eb62edfb8286af0d6b3f9389a3a153182aff0517db",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/cameraserver.te": {
+          "kind": "file",
+          "sha256": "353a0d7c10fb91e240d3b253eac5d43e95d3ae94b0d8e1e8fe5149d7d7e34ee4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/charger.te": {
+          "kind": "file",
+          "sha256": "dbbf637be78f04f20d6f96a17000115fe8517cce3b608831f84549b3e8fd47b6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/clatd.te": {
+          "kind": "file",
+          "sha256": "ca6c49c895a17065fc5018b2f60a7319710c9a9733f3ffbf777d3cb64b2409cd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/cppreopts.te": {
+          "kind": "file",
+          "sha256": "c339586253afbf3323a9dc42e21cd82f8a4418f1b4b5a76784316e4f3bd3913b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/crash_dump.te": {
+          "kind": "file",
+          "sha256": "1d0e92a249b60f32716a8b3f44e24a055b7ea61dad7206c09c81b5177f4bd4b4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/device.te": {
+          "kind": "file",
+          "sha256": "ff91ba3a781e045f3a63f59abab49d6208d1eb0109c8a74faa0dccc8bd354b68",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/dex2oat.te": {
+          "kind": "file",
+          "sha256": "e4f564068cc6fd0f57b9d6e36353ca3e7be18ce5f60a2d3a87386d9146acbc03",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/dhcp.te": {
+          "kind": "file",
+          "sha256": "400f853a89045ca710fa4da0f91a46b1da7ceb54dec8c1a69e3b5685f58e52bd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/display_service_server.te": {
+          "kind": "file",
+          "sha256": "22e507ecdbd88b4ed06ddbfc5599543b21549a78fec4e5fd4dc58d9bb42331e2",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/dnsmasq.te": {
+          "kind": "file",
+          "sha256": "191d176480eae4d63bbc9d7625fbe837b7b88f7dac544aabe8b9bef53527712d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/domain.te": {
+          "kind": "file",
+          "sha256": "96dce6b2faae44246f4eeec5cbca219c9e752038815b6febcbec2d647fda7d27",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/drmserver.te": {
+          "kind": "file",
+          "sha256": "1bbb0157ab902b84257305d2d607be586af89341474fc5b037a5b5b22910317e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/dumpstate.te": {
+          "kind": "file",
+          "sha256": "7a1e098edf90bf586c27144b5a23839548e4dc4f6aab447e28c75c2e86956b43",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/e2fs.te": {
+          "kind": "file",
+          "sha256": "17e42b4c1196cb7dcd5dc8d12be6e467682fc3a18f3399c042dbed06fe80abf5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/ephemeral_app.te": {
+          "kind": "file",
+          "sha256": "3f283f565a09656a785b1ce968ea6e2bb9ce79e6e2f487ed1f904e7766745e00",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/file.te": {
+          "kind": "file",
+          "sha256": "f907e1a8d33ef8e62d85ead922697b7078e5170bf299d1e1c660f99379b415a9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/fingerprintd.te": {
+          "kind": "file",
+          "sha256": "d5e35c241a83832b1809b6d7131730975f9eb023be7134e604791668462178e5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/fsck.te": {
+          "kind": "file",
+          "sha256": "d114453e6ed8a50ed89f3a44d4e9ab851f99aa635310daecd336a933b7b44510",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/fsck_untrusted.te": {
+          "kind": "file",
+          "sha256": "8a2e747c28c3b881c23c33ebbf17681aa9e1e900c6e10bfb6b8fe3588060dc0b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/gatekeeperd.te": {
+          "kind": "file",
+          "sha256": "03988f2f4fa42879b8921bef15a558a4eb79830a401c795c11f2604860cf53f3",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/global_macros": {
+          "kind": "file",
+          "sha256": "3daab9bf38720c6740ac13458e3c961c8f6905bf28977b26494d915b8c580b7c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_allocator.te": {
+          "kind": "file",
+          "sha256": "6a3955e67ee6160ac7570e59fa75fc853b0d9d970ebed2d747a1d43e2bdd0e2c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_audio.te": {
+          "kind": "file",
+          "sha256": "015a1341fa6f1f940f08c74af9ad7bebc93a0ec21ae0c09482a2ae035c5c543a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_audiocontrol.te": {
+          "kind": "file",
+          "sha256": "99eb729c33898f35db040801684d9777382dcf37e38cbccb7924ca126c1028ee",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_authsecret.te": {
+          "kind": "file",
+          "sha256": "0c83f0c334f895f396e07123dbf2b2c2dec6285fec9307294a70157736fc9124",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_bluetooth.te": {
+          "kind": "file",
+          "sha256": "9f21b1de0fd52e844529ddd09bf07a21d5f100f5874af0106346c5461ca0bf10",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_bootctl.te": {
+          "kind": "file",
+          "sha256": "e316306ce766d1c6baf0f60390217774f7cf5c142b2f52941663d39819f040a8",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_broadcastradio.te": {
+          "kind": "file",
+          "sha256": "e257ebfd97521405dc1cac642fa18ebe9501cb21d8597112ae8da273690d7c6a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_camera.te": {
+          "kind": "file",
+          "sha256": "1f7f9cb3e5f29127021a90f63b75d1a3226ee446dbe440ee0533fdc9d4f51723",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_cas.te": {
+          "kind": "file",
+          "sha256": "8b820ad725b66827b24c2a5c1fae818e6b8da9b7b6b15d44e6aee78c7fcdbb99",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_configstore.te": {
+          "kind": "file",
+          "sha256": "43a4a312b5796ff9ccb11d811737c85dea955d0299584e6e70772cdf7e4e8c56",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_confirmationui.te": {
+          "kind": "file",
+          "sha256": "0ccebea44b4f44cca7ff922e74f8dbfbf4b3763b60e4b48753262e41147ad89f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_contexthub.te": {
+          "kind": "file",
+          "sha256": "5a3337f8f610ef7ab1014ed81763a6f0c1cf5280441a1208f3342244b51874dc",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_drm.te": {
+          "kind": "file",
+          "sha256": "e988b2e8fc24d9f2acc9afc1d0479fe7ad145027eac1499852b61fc32b51a84d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_dumpstate.te": {
+          "kind": "file",
+          "sha256": "681c7256e575172226dc022745a718dd45d5c095893b074e25e50d4f17a7dec7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_evs.te": {
+          "kind": "file",
+          "sha256": "5d2c7159389387a4f8ed2705da139e3f4d04fe570a9377e786863bbcf1fe1c86",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_fingerprint.te": {
+          "kind": "file",
+          "sha256": "33ae1451275c639bd92b6cc201edd0b50617ac534caf87b4faad30014eb3c218",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_gatekeeper.te": {
+          "kind": "file",
+          "sha256": "85dbad31f96e374063919319c6a9b10166ed53df23c714a0c09c461048373c64",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_gnss.te": {
+          "kind": "file",
+          "sha256": "5c49d5b01483a57215fcff86ac7b2aacfc50f8c216f0b5f3480a44174d3ded37",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_graphics_allocator.te": {
+          "kind": "file",
+          "sha256": "4538b66b4e512952d8b183310e38cfde8262c554a4bde90fe3d74d8ac7b1496b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_graphics_composer.te": {
+          "kind": "file",
+          "sha256": "c53717ed730c3f3b7f663b9b476a479dc09cd85b73a4ce0cb971663b8dd872c6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_health.te": {
+          "kind": "file",
+          "sha256": "5433ff3a3de93a2f307c106bc0deac3403c2d067405d7ca290a030fc42e28eb1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_ir.te": {
+          "kind": "file",
+          "sha256": "d08cc6c2ea812acb3a88c9674f088172cb502f45fc8b4dd75195942806ec84c7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_keymaster.te": {
+          "kind": "file",
+          "sha256": "83a6faa90bb422d79f268823e1c2ca240a4ff0bd9236ecf464d4afac70f64852",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_light.te": {
+          "kind": "file",
+          "sha256": "98358a6f9418896542a468d13fe83cb3129cd16982bad53d9738b482ebe25eef",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_lowpan.te": {
+          "kind": "file",
+          "sha256": "9bb1471ba4ccc0a06f3240a782fec7d4cc00653dfec7d5622aa950ecc9524a15",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_memtrack.te": {
+          "kind": "file",
+          "sha256": "b2c57ace91c1bfe6969bdef50443ce000a03f4783d29096a42ece15c2f03d3ec",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_neuralnetworks.te": {
+          "kind": "file",
+          "sha256": "1cd5ec7e5ad72d2f08f85f156a62ad69df9b8b310b99ade3b9839743b1112327",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_neverallows.te": {
+          "kind": "file",
+          "sha256": "df7663bc32fa017980ad5487bae235839c8d5229df151ac8aaef8998c72c8bf1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_nfc.te": {
+          "kind": "file",
+          "sha256": "997d3ce7c8b66fff5521ce9d25c4315f0188f70720c0ec618faede13e948c2ca",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_oemlock.te": {
+          "kind": "file",
+          "sha256": "b9404261afe460be83aa944840c6c9cb91fa4ec35b784f2a6b2ef36b10794147",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_power.te": {
+          "kind": "file",
+          "sha256": "20c1ff23fb330ed8797ae0718bb9046e4b3d2bf7ddfd0d32aced26dc8e44ee95",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_secure_element.te": {
+          "kind": "file",
+          "sha256": "5a321c5857344a0e5aafa4a1398614bc2d29e017c3e388556c99a41670a6ffd8",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_sensors.te": {
+          "kind": "file",
+          "sha256": "fb25653b67b86bf70a2527163071a960e134c8c650145c04624ea3f761b5cb6b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_telephony.te": {
+          "kind": "file",
+          "sha256": "cbf0150c20660d91416ea37e36cc8351d1812ea2cbef320f6fe46e860d1df890",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_tetheroffload.te": {
+          "kind": "file",
+          "sha256": "99d5cdcf18c4ce37e52c6ed8745438f2f85ed1889f00c81e1bb9dfbba96f0650",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_thermal.te": {
+          "kind": "file",
+          "sha256": "25d4b2c63037040404eb2db9b036b191b6f0c422641db17574d6c55671d78250",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_tv_cec.te": {
+          "kind": "file",
+          "sha256": "3797ded8cb747b6dc60b2d850e61ce2bfae8749c2396618774e49b9782b6b648",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_tv_input.te": {
+          "kind": "file",
+          "sha256": "552938da791c720dc126872787cca93fb7c87db1eb21dd4c808e68d070587d67",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_usb.te": {
+          "kind": "file",
+          "sha256": "9f1375497488d3efc92ff72d986ea8bc6fbf4482c3d4d86a6ca80275f5c19970",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_usb_gadget.te": {
+          "kind": "file",
+          "sha256": "55e87369f8239ff1ebc69e730e02938d16bc0f92329cef112b38753e49a352a5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_vehicle.te": {
+          "kind": "file",
+          "sha256": "2b7f8c126fd1417ca924dbebc5b26224f78b6d345164e6064b859e3fb62091e7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_vibrator.te": {
+          "kind": "file",
+          "sha256": "c24f0a62ff82d03f53c83723e58abaa680b8153376f313696ab2d722c822238f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_vr.te": {
+          "kind": "file",
+          "sha256": "a51fb45f1e4173c22d7823ff26f480c4e692da38d57761d377fc9d208301c1dc",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_weaver.te": {
+          "kind": "file",
+          "sha256": "9ebd8ad2534e28df886d789d95d894fd7a97e957dcd3b42456f7d91edd961eda",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_wifi.te": {
+          "kind": "file",
+          "sha256": "ec42ee26d99b5384562332351285043abfb908db1324427b032fff15c8c6903e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_wifi_hostapd.te": {
+          "kind": "file",
+          "sha256": "baa8d2aba2c71cb815904193362567416a2fe6faf3943a07042daeddfa881df1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_wifi_offload.te": {
+          "kind": "file",
+          "sha256": "70b85b5fcf15874233509933e5bce198b79221278d1b72af607a5379c36764f9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hal_wifi_supplicant.te": {
+          "kind": "file",
+          "sha256": "7ec0fff2109f423559f4fa1b32bbc7cb8da57eb2909d48effa83925e061e1960",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/healthd.te": {
+          "kind": "file",
+          "sha256": "ec72b925f78e94ccee01a1333265ea383583a7eaf79afd8ddd89e821b6cd483f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hwservice.te": {
+          "kind": "file",
+          "sha256": "a58746ec34ace1c8938afb90d2403a680b44e07cb53f6a219cbb46727d4665f4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/hwservicemanager.te": {
+          "kind": "file",
+          "sha256": "5d40e45d9189d704fbe00770dff8f6bb10d46521d9e160cd240f1464f9c66fba",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/idmap.te": {
+          "kind": "file",
+          "sha256": "39c009f5e148f493dd6f9962b2f7f53de9761465dbf042cf52b15adf8ebf7f84",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/incident.te": {
+          "kind": "file",
+          "sha256": "502c9a04ce8e4e80f53c903a935e8081ecca60879a3ce5f7ce45750c25e00850",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/incident_helper.te": {
+          "kind": "file",
+          "sha256": "89468b356967447722156d1b15333e6ccb59d4d4bdfb58f596f111828e607b8e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/incidentd.te": {
+          "kind": "file",
+          "sha256": "d7ef8b25d70039abbd5e19e2dc0176f4107e93737ccad778f80f8b660b495cfd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/init.te": {
+          "kind": "file",
+          "sha256": "bef185a266acc0ca6b5648e65bae4415fef44af92d31723cf885188ff99c8f2e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/inputflinger.te": {
+          "kind": "file",
+          "sha256": "373665f87189d373f7e864e815882874cf3a4c80214cfd46761cfcbcdf8e0dad",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/install_recovery.te": {
+          "kind": "file",
+          "sha256": "67d5aa71d85c14f8107d079a120bdf8286190781b4eb43eeab841a97c4b5ca49",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/installd.te": {
+          "kind": "file",
+          "sha256": "c9ebf86a762e5d965c24cc5cf51a10a389c54afb056b87d625bdedc96fdf5d68",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/ioctl_defines": {
+          "kind": "file",
+          "sha256": "c185f27673fd8c8e73e876893e153bb11732ade055fbad405ef3c7567a7d860b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/ioctl_macros": {
+          "kind": "file",
+          "sha256": "49d362b570b4789b85408b4e0c6e19dde9ba1ffafab8cd1637e68a25c67470a5",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/isolated_app.te": {
+          "kind": "file",
+          "sha256": "0090effd3fd951538e46c93b10dc5bf5749ce3d8878c27a9ab86edf07a5b5bb9",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/kernel.te": {
+          "kind": "file",
+          "sha256": "bf62f7782e25bead7ae4c6d2d963fa2a687e34f3fab56b50196ff31c9e03bcee",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/keystore.te": {
+          "kind": "file",
+          "sha256": "fb79bce04d1553168abc3be71d8352b25a31643408034d2733552b2662b2b89f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/lmkd.te": {
+          "kind": "file",
+          "sha256": "3dc26342502300e3ebed43ac41053c229dc03a1912ec9e16c2ce9f4be3f335be",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/logd.te": {
+          "kind": "file",
+          "sha256": "bfceb8a39ef99387e76241c1046711a99f740f2c5a9496f0ab58bc24be262b89",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/logpersist.te": {
+          "kind": "file",
+          "sha256": "973fb38804c021204d9cb3b8510b90f92c628acb73444424fb306bbd9263a9a4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mdnsd.te": {
+          "kind": "file",
+          "sha256": "cb7f03933d1bfc8b6e80d428c00599e106b7cf36ca875314a4ff3890a20202a4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediacodec.te": {
+          "kind": "file",
+          "sha256": "7871705f576ca3b4a2e9265a8305862be9adcb8c5af4101f26e62e60f158808d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediadrmserver.te": {
+          "kind": "file",
+          "sha256": "d9aa8924ce99f4b08c7c338dc72a24369aae17391340cf51e8cc09b7a1c3023f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediaextractor.te": {
+          "kind": "file",
+          "sha256": "aeec43c64bc02073482123551fd04c5c2283b7275e3641e02fff42ec9c5b3639",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediametrics.te": {
+          "kind": "file",
+          "sha256": "4dcea5cc931131b306c2cff35003d2f7807e2a531019915edfbe66d93f6860f7",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediaprovider.te": {
+          "kind": "file",
+          "sha256": "71ed6785e5c08b14c128db7ab08eb13c94acf5d00a3e7f71ab07cc02ec580f4f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mediaserver.te": {
+          "kind": "file",
+          "sha256": "7fecafee7f791f7b7d26a7363309634a438b4de011681213c084503c9da6a60b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/modprobe.te": {
+          "kind": "file",
+          "sha256": "dc874353c95d2aa0f562ba83aa69b4d5246ffc3621437ccb293078f7d29a841b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/mtp.te": {
+          "kind": "file",
+          "sha256": "aadf16aa5cbe26da4b0bd90a3c5ec875eb8bbcd678f94f424faaad160e71e60d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/net.te": {
+          "kind": "file",
+          "sha256": "83c28d80254424e879fec8849812825e45df916f3109482b6e9907c7edbbbb0e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/netd.te": {
+          "kind": "file",
+          "sha256": "9e1f85c5cb9a932ac7b210c60cef4670e1aefe7f4a65bf584f0a6b6f01266bb1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/netutils_wrapper.te": {
+          "kind": "file",
+          "sha256": "8b466ddecaa8ab4462fc3c237011ac7a4123c5b37bebac86ddedf7b9fa3195fe",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/neverallow_macros": {
+          "kind": "file",
+          "sha256": "2d7ffed76247d7fa598f34b636dafc9589b26f63dfd697d51523d163985fa756",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/nfc.te": {
+          "kind": "file",
+          "sha256": "bf7748322400aa0169814beb1391490a3a54f766c860496e4381796b8c666442",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/otapreopt_chroot.te": {
+          "kind": "file",
+          "sha256": "c2ce7419785b4b569692f6a8b5c38b6719fbc05f0abd28de2379b7e4d8dc1141",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/otapreopt_slot.te": {
+          "kind": "file",
+          "sha256": "7fcc92f5150b936e5875c65665674f539a12defe1ebb526ff0e6ecb7c6cfd2da",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/performanced.te": {
+          "kind": "file",
+          "sha256": "0229c9b60127f9c8f1bb6a13c13f40f73202cad67017d2743a1726673be9bf97",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/perfprofd.te": {
+          "kind": "file",
+          "sha256": "c065dce7ab09b9504a740fa9e2bdd92322b9d97fdb74c5c76c125bd8a804290c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/platform_app.te": {
+          "kind": "file",
+          "sha256": "0199747ce0a4d4281c3f1c661c30b7081e4422e9d8517c6cba4d5e17ca05dbbe",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/postinstall.te": {
+          "kind": "file",
+          "sha256": "9e949ab14129b6454c99df078e1540a14a296d705d326c929815c0b9025a451d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/postinstall_dexopt.te": {
+          "kind": "file",
+          "sha256": "fe3006877f17b845fca6678c7b513538f6281ce5e9e67553282694bf84a7050c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/ppp.te": {
+          "kind": "file",
+          "sha256": "026adead3809e74c84fb44b0bdc8a0050f7d3772adfa55463653b9c2b85f950e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/preopt2cachename.te": {
+          "kind": "file",
+          "sha256": "cac3791a2476b9828ed1849c97c45d25e7a7548e8ddc9605d0e195da4c830a21",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/priv_app.te": {
+          "kind": "file",
+          "sha256": "a6c5d1d7009cefa667f7eac56f9f069b4adb6f33857931e2dd595745542161db",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/profman.te": {
+          "kind": "file",
+          "sha256": "8f7b13658adfdab2168e8868d7fa8c0b75a5b91c483f7e008321f0f9b0933452",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/property.te": {
+          "kind": "file",
+          "sha256": "aebf933d7c7359d4cf91c3b95e63c0fcb46fa940baf08d73fc20637f29856688",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/property_contexts": {
+          "kind": "file",
+          "sha256": "6ec871cf376c683b5d43e110177a4bce0287305306d075150401d14f280f3f82",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/racoon.te": {
+          "kind": "file",
+          "sha256": "69711f81c8331d43bd26e85d8b68a2ae49d846a4918a48f089dbecf7d4b9235d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/radio.te": {
+          "kind": "file",
+          "sha256": "2caf68bc50d3c33e5cb6d0942382dac8cd7353537efc830cdbaf77ebbaea580d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/recovery.te": {
+          "kind": "file",
+          "sha256": "e9b9b483fe017108ebbbb145ceef5ba1123acf398a22b615bca37a96e7ec8312",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/recovery_persist.te": {
+          "kind": "file",
+          "sha256": "a7c62180a78d5c4d90ef0a2783a0c0f62f931fff2ea42c43fd70abb521b229bd",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/recovery_refresh.te": {
+          "kind": "file",
+          "sha256": "243f4ff07a6214c9cc95aadfa10d2bed4af75583afed751f256386d3411f02d6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/roles": {
+          "kind": "file",
+          "sha256": "362775cb1b2a62fe2fa304ed6922e4d2b1563ad9cc850fbe35af1b60d113ae2c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/runas.te": {
+          "kind": "file",
+          "sha256": "0289e1d8e8738e8d7412dfb8b8d2946679f352338546d7b5533869dde2e574ba",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/sdcardd.te": {
+          "kind": "file",
+          "sha256": "7c73f9a03d76a50d161e3c8400be1303e3d31a6965db7c2d329f4cc4cc12ddb1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/secure_element.te": {
+          "kind": "file",
+          "sha256": "5220e810e098a0c6cb6e3253e50bf736e4fe51d8af36008e130a29ce69a2721c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/service.te": {
+          "kind": "file",
+          "sha256": "7e2e7640c53cbf37cf0da2344d40cadda2d26b59c249d141596751cd04b4bc37",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/servicemanager.te": {
+          "kind": "file",
+          "sha256": "2ef8345348d0af7cb630754882cca6ea843c9c01a3caf0474d7c6b1784edd46c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/sgdisk.te": {
+          "kind": "file",
+          "sha256": "0d3f95f1246f015a30c9168bd05808a6dfae4136dbf7f34ce06e03049a0043eb",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/shared_relro.te": {
+          "kind": "file",
+          "sha256": "a749a04d91fdff8a9b5690cd3f04c17ed0d075c873de1fe7b342881dc6c15445",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/shell.te": {
+          "kind": "file",
+          "sha256": "bcb4dcffd1757eb376ec6b513ccd20dc6d058dd9082d2a283e88ce64416f234b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/slideshow.te": {
+          "kind": "file",
+          "sha256": "ed5988c747cb2c21bc4b0152962cf29d7d15551de382a205f01674572f55a95d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/su.te": {
+          "kind": "file",
+          "sha256": "e1bbfa7b3fae3adf5a96f640bb81f6a995a6e1161751e5768c0c22fa02ca9e67",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/surfaceflinger.te": {
+          "kind": "file",
+          "sha256": "a8a1ef07197bf2c33903e1f5a31d73dfbc38df4e67eac1be07d6e440311b48fc",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/system_app.te": {
+          "kind": "file",
+          "sha256": "89d62acc300ea4f19dbc0034d701290b9588b9a55087295230d4bba16724a1c1",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/system_server.te": {
+          "kind": "file",
+          "sha256": "274b0620efc4865239e461c63efb100ddc6b2c0efe141b31c13372731d7ae536",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/te_macros": {
+          "kind": "file",
+          "sha256": "4ec8e68d79f05f11ebe6ecff01ddc1a3fa856fa9c3a6a19428e51f934c068599",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/tee.te": {
+          "kind": "file",
+          "sha256": "199e66dec36133c0792d82ad9e9eaa1981cb745e401f74e6f26179fecc90e0f6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/thermalserviced.te": {
+          "kind": "file",
+          "sha256": "8301931b34d764dbbd767cef1b912d31d5a3bec963153546e0cc9d2ab146e99c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/tombstoned.te": {
+          "kind": "file",
+          "sha256": "6365d822ce4852b0521978eefacc12a99a3b03fa55a2509c4292db761e5e4807",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/toolbox.te": {
+          "kind": "file",
+          "sha256": "59d3ccc88f928f1abe6db54217df9d13b69e167c95d06b80c207919d1f465981",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/traced_probes.te": {
+          "kind": "file",
+          "sha256": "358cfe8b86556384b74ce5a75b667c08aa773ac9f9c635bbbb92dcbf11475a5d",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/traceur_app.te": {
+          "kind": "file",
+          "sha256": "fe2fdfeec19c9057e0a857c7da1cb1c220f500a6288c72209866a9bf996aba9c",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/tzdatacheck.te": {
+          "kind": "file",
+          "sha256": "23bff2065609b5542ae3521d116a1a534ed70eddd4633fd527bc62a7cf1b9977",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/ueventd.te": {
+          "kind": "file",
+          "sha256": "d899c6ccdc08044dec3673631e7b80b9137a96cc6029ab263fe5b9b533b6b293",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/uncrypt.te": {
+          "kind": "file",
+          "sha256": "3c3127e67dedd2eeafb6dd876958d769adf56fcd96c227efe8f5d106418193aa",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/untrusted_app.te": {
+          "kind": "file",
+          "sha256": "fcbc093b4252c964a33248f942e7107580412b801810f2921df466f8afbe6e3a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/untrusted_v2_app.te": {
+          "kind": "file",
+          "sha256": "23d67c557f41cdec5bc4052a420441dc1b86101ab820bef283624c2dcb00c195",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/update_engine.te": {
+          "kind": "file",
+          "sha256": "594126f7bb6a238d685a0dbef8153ef979546f613ab61342a94ba597628c5635",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/update_engine_common.te": {
+          "kind": "file",
+          "sha256": "e66b619e9065eb90f3f66a841a43a53ae78fb802bec22ee4a9e6c9eef959a10a",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/update_verifier.te": {
+          "kind": "file",
+          "sha256": "301909965867535dd3ab27db2b62e75de484f64bf2ccdf97d9655449e6ab5cec",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/usbd.te": {
+          "kind": "file",
+          "sha256": "9016bffef64fbcecd6a1ac6027773385453c16030fd75e6c659542f554f5a09b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vdc.te": {
+          "kind": "file",
+          "sha256": "19b530c4c180f9382e55990bac1c04fed85e082acab96972ae69d5ec51be2e9f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vendor_init.te": {
+          "kind": "file",
+          "sha256": "fc4faa731f4dd9d47be4d155464d3351beb3f8d7eadf14907d840ac0228230d6",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vendor_shell.te": {
+          "kind": "file",
+          "sha256": "78dfef5c907a1c2bdeb45d45dac8e8f6952d506ad80251e0f25109e3fef4cd4f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vendor_toolbox.te": {
+          "kind": "file",
+          "sha256": "43dabd0b98aa019721b4456405ff0000a84b39837f824894b9d2d25c6aa6efb4",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/virtual_touchpad.te": {
+          "kind": "file",
+          "sha256": "015b7165f35b9f85d6437d6e90faffa9f447b5a4eb21780c850c2830d4013f57",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vndservice.te": {
+          "kind": "file",
+          "sha256": "3435f0e92777bedd07679b903ebf9e4763c831a0b135efc1b59497d72345f331",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vndservicemanager.te": {
+          "kind": "file",
+          "sha256": "52a27877172447b87eb16cd611c960ade67420e2c4333d21ffe1c254d158e9ed",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vold.te": {
+          "kind": "file",
+          "sha256": "d2102d24ade9b539a25d7f770ef22c40c8c38a5d43801de3a1498f25e9450a1e",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vold_prepare_subdirs.te": {
+          "kind": "file",
+          "sha256": "8089329b9705412ca5c5c5d911157bdf00df6cfaef2cddb1a2bf440b1bd5bf3b",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/vr_hwc.te": {
+          "kind": "file",
+          "sha256": "aaa2e2858ddc3ca5a19425ce117715e4581cbfb0e862bb0cb02beb67edb7e88f",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/watchdogd.te": {
+          "kind": "file",
+          "sha256": "1c7acc1622a23e7e975b1f364dd04bc6d70802508a2c514a9768c7aa8c40c4c0",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/webview_zygote.te": {
+          "kind": "file",
+          "sha256": "e3267f3525b9d02ba4b99d15fef2d30d69fe5d83bfa426bd616428a77ecbf803",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/wificond.te": {
+          "kind": "file",
+          "sha256": "7f191e7e9ff13c59e988709290bf2b243d9f9c5c912504870b1cf9ec817f0156",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/wpantund.te": {
+          "kind": "file",
+          "sha256": "4da569d1104fac04539d70df465f2142b7c17c30ccd83d0af2b00ebe2848c839",
+          "mode": 420
+        },
+        "prebuilts/api/28.0/public/zygote.te": {
+          "kind": "file",
+          "sha256": "02894cdbc46e2f976c02f13bb71e4f403e1b89d79a11486045c097ab0e49b0d7",
+          "mode": 420
+        },
+        "prebuilts/api/29.0/private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "4918e9ab6e913f411a916267a73b28a70661c5a9bfefc151fa61fe5d702ef173",
+          "mode": 420
+        },
+        "prebuilts/api/29.0/private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "629c26c58c74516cd52f5d993da7036c2a58f4a71b68d7868fa0739a6d7bfd67",
+          "mode": 420
+        },
+        "prebuilts/api/30.0/private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "c2ae86b5d2e246e196b0db36d15841277297132a91c6fdbe06c1933330399fea",
+          "mode": 420
+        },
+        "prebuilts/api/30.0/private/compat/28.0/28.0.compat.cil": {
+          "kind": "file",
+          "sha256": "0bd731d104df8e22b19f61ab9ad2828dc4a5b7092c82aa09faf60c01fd6ce6e6",
+          "mode": 420
+        },
+        "prebuilts/api/30.0/private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "c71bdc4abec159cdee735831151db7baf2af12088f7dfddf5160abaef3d6f90a",
+          "mode": 420
+        },
+        "prebuilts/api/31.0/private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "c2ae86b5d2e246e196b0db36d15841277297132a91c6fdbe06c1933330399fea",
+          "mode": 420
+        },
+        "prebuilts/api/31.0/private/compat/28.0/28.0.compat.cil": {
+          "kind": "file",
+          "sha256": "bd927aaa7c0b10b84dc35f8be3a4f767ae085fb042f0c8a8ddb9319fdef80561",
+          "mode": 420
+        },
+        "prebuilts/api/31.0/private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "c22fa151c696579454c41f9b45f48675445973cca4c9ff423aa570727ed4915e",
+          "mode": 420
+        },
+        "prebuilts/api/32.0/private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "c2ae86b5d2e246e196b0db36d15841277297132a91c6fdbe06c1933330399fea",
+          "mode": 420
+        },
+        "prebuilts/api/32.0/private/compat/28.0/28.0.compat.cil": {
+          "kind": "file",
+          "sha256": "bd927aaa7c0b10b84dc35f8be3a4f767ae085fb042f0c8a8ddb9319fdef80561",
+          "mode": 420
+        },
+        "prebuilts/api/32.0/private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "c22fa151c696579454c41f9b45f48675445973cca4c9ff423aa570727ed4915e",
+          "mode": 420
+        },
+        "prebuilts/api/33.0/private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "c2ae86b5d2e246e196b0db36d15841277297132a91c6fdbe06c1933330399fea",
+          "mode": 420
+        },
+        "prebuilts/api/33.0/private/compat/28.0/28.0.compat.cil": {
+          "kind": "file",
+          "sha256": "bd927aaa7c0b10b84dc35f8be3a4f767ae085fb042f0c8a8ddb9319fdef80561",
+          "mode": 420
+        },
+        "prebuilts/api/33.0/private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "c22fa151c696579454c41f9b45f48675445973cca4c9ff423aa570727ed4915e",
+          "mode": 420
+        },
+        "private/compat/28.0/28.0.cil": {
+          "kind": "file",
+          "sha256": "bc6347b18cc4223ed219de4306a52f630e4460b364323af106b4a4e3248afde8",
+          "mode": 420
+        },
+        "private/compat/28.0/28.0.compat.cil": {
+          "kind": "file",
+          "sha256": "bcd2b755cc8c7d3de2d6d7e91f2ba33c21474bbe9a6253f6e20696a1f01e387b",
+          "mode": 420
+        },
+        "private/compat/28.0/28.0.ignore.cil": {
+          "kind": "file",
+          "sha256": "1bc21f4a795779535b1af05766b948d965b42bbd35985d226dfd6e4218cb6385",
+          "mode": 420
+        },
+        "private/crash_dump.te": {
+          "kind": "file",
+          "sha256": "a0d27664ad2ca2e44f7ef65b7e9e02b3260fb7c936dbb2a57638846f827f44cf",
+          "mode": 420
+        },
+        "private/domain.te": {
+          "kind": "file",
+          "sha256": "d389e1d6c15bdb22fae4ab68ecbfda0804bb1fdf57dfdf31489aaf1487915649",
+          "mode": 420
+        },
+        "private/file_contexts": {
+          "kind": "file",
+          "sha256": "f78ac7744363bea3427a35ba43be9eab9a58433eb0e4ea422a0a29ace5563530",
+          "mode": 420
+        },
+        "private/hal_fingerprint.te": {
+          "kind": "file",
+          "sha256": "8955a5bd68a5e6bbf2636564e4631acbf5a8c0d5c6c3b32afb30dece5739b5be",
+          "mode": 420
+        },
+        "private/network_stack.te": {
+          "kind": "file",
+          "sha256": "14cc3b62c7fd6cb5755a07e3741f9485d76118ff8ab7f0e08b3145f8c83f36b9",
+          "mode": 420
+        },
+        "private/service_contexts": {
+          "kind": "file",
+          "sha256": "72cb5456148762f578aab53937b51eddd3ec450b0eb9db5ec9bf3e118f633c0d",
+          "mode": 420
+        },
+        "private/su.te": {
+          "kind": "file",
+          "sha256": "abfaa3ccbccf2885fbe53c45f3d74b9564ca2f1c433067a9c7df1d349f8db654",
+          "mode": 420
+        },
+        "treble_sepolicy_tests_for_release/Android.bp": {
+          "kind": "file",
+          "sha256": "9fd9a5589915319cf90c08c245e25cbcecfb790fcd6deda87e1581d5ca3fe52d",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/vold",
+      "name": "LineageOS/android_system_vold",
+      "base": "cd2c5dea3e93c07be61576f658d002ecc4570de2",
+      "patch": "patches/0022-system__vold.patch",
+      "sha256": "9291b562030e8d358c3a0239d9cff63425fe44d67c871574a837a3a1b2ab6e5e",
+      "expected": {
+        "FsCrypt.cpp": {
+          "kind": "file",
+          "sha256": "dcd62ae5179f85b4c0ae945f996ca0b40550681520abf9016d401efe49feab42",
+          "mode": 420
+        },
+        "VolumeManager.cpp": {
+          "kind": "file",
+          "sha256": "09cec0ec2e136c1b09b71e623e037b21ed952c9a36254bca7be46076e740abdb",
+          "mode": 420
+        },
+        "fs/Exfat.cpp": {
+          "kind": "file",
+          "sha256": "7e606338bde2b76eecf8f33d4147cbe0ede63711ae18fe7c27b80c3fdaed2891",
+          "mode": 420
+        },
+        "main.cpp": {
+          "kind": "file",
+          "sha256": "93f7072ef9fbc45093faa01bce691cca2c8bdef356040dd6a97071eeeef4c38e",
+          "mode": 420
+        },
+        "model/EmulatedVolume.cpp": {
+          "kind": "file",
+          "sha256": "a1637e73f2a8d4e6faead9c4f4666e1d3097355899c4de4b4f1a6fda4e94b5a1",
+          "mode": 420
+        },
+        "vold_prepare_subdirs.cpp": {
+          "kind": "file",
+          "sha256": "70d802bde156ae8b9c8fd1f68ae9559f4360f982a525b1565aa18ef8b6d38f75",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "vendor/lineage",
+      "name": "LineageOS/android_vendor_lineage",
+      "base": "686d8669737d2207208ea21075320840b5ec8463",
+      "patch": "patches/0023-vendor__lineage.patch",
+      "sha256": "5b4009c203dd09ff9c222bd09f74d2acd406df858565a7a49e126670b75b3a84",
+      "expected": {
+        "config/common.mk": {
+          "kind": "file",
+          "sha256": "efe9782ecb9b06a94ee9abe2cc78792055588034b5508195e0de694439878e1f",
+          "mode": 420
+        },
+        "config/version.mk": {
+          "kind": "file",
+          "sha256": "3381be0b2513c562519f6a0b7987e2ebae3100359ae7ca52496e803ca4cebe45",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "vendor/hardware_overlay",
+      "name": "MisterZtr/vendor_hardware_overlay",
+      "base": "fcd3782f7262b82ff3a34115d45a540f63d42508",
+      "patch": "patches/0024-vendor__hardware_overlay.patch",
+      "sha256": "23d9ebd8285b9cea2e4f7405b0c75e34c7b400bec8876e34795d1bb4ef87ab5e",
+      "expected": {
+        "TrebleApp/Android.mk": {
+          "kind": "file",
+          "sha256": "68160719d0f2dd1f7e12c2f8b68e6988569df99627402f7d65c0854582c25c53",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "device/phh/treble",
+      "name": "TrebleDroid/device_phh_treble",
+      "base": "91031960bf9f5ccf4e0af412db12138b7e26bd5b",
+      "patch": "patches/0025-device__phh__treble.patch",
+      "sha256": "ad817e3d3133bb5a01984992cddb00aed7272e9c6dad7566ab9bc3bf115cfb38",
+      "expected": {
+        "00-fix-metadata.rc": {
+          "kind": "file",
+          "sha256": "e500a2bf14d51a38fd40734cc0e284c47da1d30a519e264874ca5a3eebfcd64b",
+          "mode": 420
+        },
+        "00-fix-metadata.sh": {
+          "kind": "file",
+          "sha256": "9e2a23bc253550ca65c352615f87ae8442ffacd980c1182df07d3c0b6ebc9167",
+          "mode": 420
+        },
+        "AndroidProducts.mk": {
+          "kind": "file",
+          "sha256": "c44315d61e385d1c13a7f00f55b244f4ca94f7abba5ba53113446fb853e135fa",
+          "mode": 420
+        },
+        "base.mk": {
+          "kind": "file",
+          "sha256": "07478c135493ac1158a3c66616a5c40e8c849dccbb74e8228d4d25eed4f17b2d",
+          "mode": 420
+        },
+        "charger/Android.mk": {
+          "kind": "absent"
+        },
+        "charger/images/charger/battery_fail.png": {
+          "kind": "absent"
+        },
+        "charger/images/charger/battery_scale.png": {
+          "kind": "absent"
+        },
+        "charger/images/charger/main_font.png": {
+          "kind": "absent"
+        },
+        "charger/values/charger/animation.txt": {
+          "kind": "absent"
+        },
+        "huawei_charger/Android.mk": {
+          "kind": "file",
+          "sha256": "9b6b483ed635e8c6956a0804aa0a895c8242d622a3547dc55663cc5d10e8fe5b",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x1920/bg.png": {
+          "kind": "file",
+          "sha256": "b8ed8337952c7366db8fd4bd9130eec8ea0f7448ee2d621bf77f223817129074",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x1920/empty_charge.png": {
+          "kind": "file",
+          "sha256": "db7ff5f02383a83da56c9ae7cfb0207e64a30ce314ce5b6ba3b93818b1fe5882",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x1920/full_charge.png": {
+          "kind": "file",
+          "sha256": "fcab5392d5b3cf6c03dc6e460e64376585365a97d1c438c6ffca4c241b6ec314",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2160/bg.png": {
+          "kind": "file",
+          "sha256": "e7f4d69cd2b7e233122e605e68c2ce35eda1654b6d2a7fbc37e26826d233b127",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2160/empty_charge.png": {
+          "kind": "file",
+          "sha256": "1ba333e0e1b194e8b7544e834a723f8e85cbee32c41c540bc30cc74c8ce90f18",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2160/full_charge.png": {
+          "kind": "file",
+          "sha256": "b1f88cc9b0e373fac94f447afd8ec14a5430c34d76c8f204aad65155a0d8fc66",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2280/bg.png": {
+          "kind": "file",
+          "sha256": "4754219c0e06a8d9719c3f0e049b31238f513e880715709f69721a9ad62ba7e4",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2280/empty_charge.png": {
+          "kind": "file",
+          "sha256": "ca893718274a67ba3481a7b601aed59dfa736bd7f8d2420ef6ceb711a47651b6",
+          "mode": 420
+        },
+        "huawei_charger/files/1080x2280/full_charge.png": {
+          "kind": "file",
+          "sha256": "6dee0156f5770b0ffc030d31b06771fd004e2c3a057d4df6b7fbeb9edb5b15d1",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_01.png": {
+          "kind": "file",
+          "sha256": "92faa37d81cfde15fcfe94916b30d99accff4da580e1a9d29a619138e127693e",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_02.png": {
+          "kind": "file",
+          "sha256": "2b1f9a333adbede0a8bdf7ad8fd5c1b446f02c30377503c167563d530aa04c0a",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_03.png": {
+          "kind": "file",
+          "sha256": "83a18f28c454f8c1058059965ca45d330b451245e59d1c7fa77a350d6763ab0c",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_04.png": {
+          "kind": "file",
+          "sha256": "47588f12516f78a4a2a0d6fbbc83b9906b881c94f3deb84ee476d43c0e6f67c2",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_05.png": {
+          "kind": "file",
+          "sha256": "4849dd63228824ff32958be0c259b3b7f155f51cb1a9c25a4a35441d678e0d6d",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_06.png": {
+          "kind": "file",
+          "sha256": "89e5fa7727248a32f211e578cdd3d0a4a2ab1a9c7382c0c3c4a301a1df603852",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_07.png": {
+          "kind": "file",
+          "sha256": "efd742bc9c24723615c8554bf526532d375dc2895b57bc553e02f8cda2cf345d",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_08.png": {
+          "kind": "file",
+          "sha256": "a29b7b01e55bcc6068e8f809bee2090967ac1ac945e2dc01ec3ed34ac4bf81b0",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/battery_09.png": {
+          "kind": "file",
+          "sha256": "034e26663de66b145c8f36fabed27b1e9e568e7110e696057c7d5f86b4d4c7bc",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/bg.png": {
+          "kind": "file",
+          "sha256": "f72df98e7bf553e114747093c80fbfbd15081b6aadbaf6537f6083f49226d29b",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/charging_12.png": {
+          "kind": "file",
+          "sha256": "c37e3fdba2d3c4e188dd94903b52556ad74e41959128d9214bcbdbdf3015c568",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/cur_surface.png": {
+          "kind": "file",
+          "sha256": "2738cedb07044b74d943b7275e3f24bb861bc8f15eafdeff27b231bc9065e8ac",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/empty_charge.png": {
+          "kind": "file",
+          "sha256": "184d54755e5ddae160e9443a784d621a769b1daf4319c122c632b5659aaa8b20",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/full_charge.png": {
+          "kind": "file",
+          "sha256": "b64ce8d2c901f28be2b76bbed9d1a0506492423d076b5628eb968aeadc498fb9",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_0.png": {
+          "kind": "file",
+          "sha256": "988f5fb6c96488bb40178ef422af493855d37eafc0b339a12a7d08a29f81fb36",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_1.png": {
+          "kind": "file",
+          "sha256": "b256da3a236fab9a22c7e6092436e0f0c16f70e441ebde9baad8d0358250059f",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_2.png": {
+          "kind": "file",
+          "sha256": "3ad8a3c5f3a259dc3f303caeccaf1f622856019d6a22cf3c6c17a34544cf06dc",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_3.png": {
+          "kind": "file",
+          "sha256": "bb9dafaef1e3d7e255d9d040b3fda70cec59933c8497491d4fbc037f5507e110",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_4.png": {
+          "kind": "file",
+          "sha256": "3d501f9fd52443c5a2c8381ef6e8f52a07a46541064cc5cb267537cef68d53e2",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_5.png": {
+          "kind": "file",
+          "sha256": "2c103861d85f185e6ab7fa09fe1aa2cf18d2fe3f2f6a34c390f828b9596a65fc",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_6.png": {
+          "kind": "file",
+          "sha256": "4d86433147adcce48ca67bb237dc2497665401f2925de99757fb0ee36a17e358",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_7.png": {
+          "kind": "file",
+          "sha256": "2486392c5a494548069bd969bfcf825b0a7cc0d4fa3b74d64f10b5983bbf3c6a",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_8.png": {
+          "kind": "file",
+          "sha256": "f891873aa8f8972187d949285ca40da72b6d6688ed386ba316719a09f0506872",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/number_9.png": {
+          "kind": "file",
+          "sha256": "766fa8d2b4fd8bd048b0469e8d8616374c2baa50cee06370c1386e7d1daa8026",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/percent_sign.png": {
+          "kind": "file",
+          "sha256": "e72e72eb9985c694b18663fc052935079f181e92f0437cbce076571ed48d8c73",
+          "mode": 420
+        },
+        "huawei_charger/files/1200x1920/scp_charging_12.png": {
+          "kind": "file",
+          "sha256": "227ca39c6e45646e8c4cfdf382f5b1fce5ca0d776f112de28c1bee46df1fe9dc",
+          "mode": 420
+        },
+        "huawei_charger/files/1440x2560/bg.png": {
+          "kind": "file",
+          "sha256": "ad766000ca6f65b2a35f18cdeabc30c0f6250cf3869d472bd3def071c0c4f68d",
+          "mode": 420
+        },
+        "huawei_charger/files/1440x2560/empty_charge.png": {
+          "kind": "file",
+          "sha256": "9c5e8d185ee13d5fbbc77689acee8e009a7fab036f8ea099a0534f5c544f5a4f",
+          "mode": 420
+        },
+        "huawei_charger/files/1440x2560/full_charge.png": {
+          "kind": "file",
+          "sha256": "3eedfd84f2df8b72bf18ee4be7dcd4d7ee4d0589fbe4563b35f371ee72515c40",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_01.png": {
+          "kind": "file",
+          "sha256": "69fe97c6140b9fe938a50869cee47b3605a3ff66910820d105fd280b28a7aeb8",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_02.png": {
+          "kind": "file",
+          "sha256": "e03052785e50eee2d68c92de9716fe31d26f1bc01172577fdee643c309ef0159",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_03.png": {
+          "kind": "file",
+          "sha256": "2e6387afbf82c77697c9d53103b9dc120d4c46a73bac6c775871a9f79893d7ff",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_04.png": {
+          "kind": "file",
+          "sha256": "d8318805726e9b757612f32846895726252caf80d04de894d8b6b2b893dcdc16",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_05.png": {
+          "kind": "file",
+          "sha256": "43d10fb166ece4e2ef5fb9447f848460e602c4f5ae9a7645f77135b74ddf0dc0",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_06.png": {
+          "kind": "file",
+          "sha256": "4b4941e2c50928422865ceb8971860786435b6c699d5a9487bee1cea5b9eab0b",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_07.png": {
+          "kind": "file",
+          "sha256": "971f88c7f665ec808d5d8cd87092ab666d5a07a4d69580d864e57bb468b46a94",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_08.png": {
+          "kind": "file",
+          "sha256": "0d270993a8af92bf609e12b258faa1faf239a93555a29e76d73a0738cd43df92",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/battery_09.png": {
+          "kind": "file",
+          "sha256": "cd377e4fcaf9584530c21e8919b3ea2bac149773db8250aa1e94e9f74fe87e0b",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/bg.png": {
+          "kind": "file",
+          "sha256": "21d89db5251b7215c56c17b42b6f2dc7b1ed4f0dad88f2480769672401dc5e78",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/charging_12.png": {
+          "kind": "file",
+          "sha256": "c7f3dd1608b8be6781f09fe692b2182d52e05c6ce6808b3f4ab68571f1d9efaf",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/cur_surface.png": {
+          "kind": "file",
+          "sha256": "f6c8ddd1b1a7f09e41458538392fad2d338f75bd20c85cadf1b5b434f14ec7b4",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/empty_charge.png": {
+          "kind": "file",
+          "sha256": "a99851a808412fc88da2eced93d93b3c8ec3449fbf77dc5986aaf28b0b8e7948",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/fcp_charging_12.png": {
+          "kind": "file",
+          "sha256": "15d42229c4118ac33e04f017ff4a0ea7a274d06c90c641b5abaf14bfdce2819c",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/full_charge.png": {
+          "kind": "file",
+          "sha256": "901f6c1a7c2c5bfce6d7a328a3591faca2743ba1bd83792d7a8acfd11361de3c",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_0.png": {
+          "kind": "file",
+          "sha256": "dc4dc39265c2769e2b148e28d66633e50dee0826ef8b0e45dd891e62faf83d2f",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_1.png": {
+          "kind": "file",
+          "sha256": "51d3c4f4c43241441cded714bdc56572903cd2e719bf6171b01427bfac9b49d8",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_2.png": {
+          "kind": "file",
+          "sha256": "25adfcb4de7213f32587e01a4bd7de1c52d3c4d6aeb20b2a2b3bcff1a489c1d1",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_3.png": {
+          "kind": "file",
+          "sha256": "a5f340cebe186af4d5d3a4a682facfc32570b25521545f07f24706187f07f2cc",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_4.png": {
+          "kind": "file",
+          "sha256": "b517086d8c21060bd95642d7159af528e66523f3245c4af35e931735698164db",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_5.png": {
+          "kind": "file",
+          "sha256": "ecc1249d8fd32376d43f77b3fdb665b90f456b3e3eb6196ee7ad15731039ac8b",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_6.png": {
+          "kind": "file",
+          "sha256": "2db5295fa8436a2e1b100fe08cfacca7d99d6dbe168e3a3e97fd3824a428419b",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_7.png": {
+          "kind": "file",
+          "sha256": "a12736ebc01183b42116231b506c5acd41a93ee424f7a4c05ce8e37585b31532",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_8.png": {
+          "kind": "file",
+          "sha256": "a6f450df52f64c2206172050583661f3e276509040e1b89054f67375c5fc4c03",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/number_9.png": {
+          "kind": "file",
+          "sha256": "b5f260e94d1117b28c0009130b5215ae25205f7c82bbf3420a4928c99a1fdd2c",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/percent_sign.png": {
+          "kind": "file",
+          "sha256": "509a521773b233827fd1176ba0a07971ae1458c7a0d18b192e70396d28b75073",
+          "mode": 420
+        },
+        "huawei_charger/files/1600x2560/scp_charging_12.png": {
+          "kind": "file",
+          "sha256": "8c7a198d97f849ae67d4a197f692403b827c9783b4bd9171ab71ec307c61f483",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1280/bg.png": {
+          "kind": "file",
+          "sha256": "307b2ca78fb04accadd3483a5b74723e8fce7dfbe0c3a21bf9408934ad9fa2fc",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1280/empty_charge.png": {
+          "kind": "file",
+          "sha256": "245a95108a65f5e2d6f5567384e13dc0ba5b03150d2ef6dcbcea10f23e3fa7b8",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1280/full_charge.png": {
+          "kind": "file",
+          "sha256": "0d74cd0ec12baf5ece7335cafa796612bb1b825ade5aa81d0c31160aeaffb7d6",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1440/bg.png": {
+          "kind": "file",
+          "sha256": "ed6a5e70986a4f464e60733307759f468f1a0ef19518380e541534c37c3ad841",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1440/empty_charge.png": {
+          "kind": "file",
+          "sha256": "5ece72fab971d7686e93e2b086f6abaffc25398bceb576d0730522fb88dc77f8",
+          "mode": 420
+        },
+        "huawei_charger/files/720x1440/full_charge.png": {
+          "kind": "file",
+          "sha256": "26c23ab8fb6deb6628b7bd5c696532d1823afd251e90d19b1af3bf7360d14b31",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_01.png": {
+          "kind": "file",
+          "sha256": "7420f8aba06c972048a7fd216a4b254c1bfc6e57938c7b84777b6b2f7b0d769b",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_02.png": {
+          "kind": "file",
+          "sha256": "7c8464ba0fce90050ddfe1f2be1170b506c88752d6b7eb659a245d250684200b",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_03.png": {
+          "kind": "file",
+          "sha256": "3d64605bee4e2544095e9c92c0216096360298abb6efc63fc07d50083d574155",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_04.png": {
+          "kind": "file",
+          "sha256": "bc1b7844e9cf3570d208de8a5570faa11831ce846feb8eda254f045c556928c3",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_05.png": {
+          "kind": "file",
+          "sha256": "eac3d3246a514ae352769dadbb1ada23487b5d7e8cc2204234cb3be0a842615f",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_06.png": {
+          "kind": "file",
+          "sha256": "f1887fa18fe987e172805e9f3dc4746e4506561dbe9aedc77b9576ca6d2a519a",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_07.png": {
+          "kind": "file",
+          "sha256": "2e81a65f0f790b83b16b83babb8eb4cedb0464511811ecb2d8e85fd88b1a58c7",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_08.png": {
+          "kind": "file",
+          "sha256": "a0392e84a8d6f76f23ce76d2e9f9f0dbe81a42919d8c0c1a23aea9bbaff337f4",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/battery_09.png": {
+          "kind": "file",
+          "sha256": "8f72e914f44fb257f81fe5e840a05798c3ea60a000ebe94da0237b71b1f5b051",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/bg.png": {
+          "kind": "file",
+          "sha256": "de708b6e0136de21e9d253fcb0296f16de4cf86eb59701904f35f7ae4c3db1f6",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/charging_12.png": {
+          "kind": "file",
+          "sha256": "7a06de2d2e6ab86ed0a00333dbe4fc0653c7d3f71b1928194c0b5f2f91f89b98",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/cur_surface.png": {
+          "kind": "file",
+          "sha256": "9810e2d5cf998d36fde2e29e02a8d67292b5ba59b04d9f1909f6b47c529b5251",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/empty_charge.png": {
+          "kind": "file",
+          "sha256": "76af25aa26f55ca5d2fe9d4b1fb79c173b3b5fca55fdedb3fbab0c3129e3b30e",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/full_charge.png": {
+          "kind": "file",
+          "sha256": "9fa8134af6a2fd867e759fd7d3fe9f1be9cd4684e8bd8c02d8a494acb3a57b5a",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_0.png": {
+          "kind": "file",
+          "sha256": "0b01978943c49558c653b5bb0afa33744cc53101b4436911c18d0b1cb6a3cc60",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_1.png": {
+          "kind": "file",
+          "sha256": "59dcc490d1c42bded70197ce8f15960c38209a685d976a27fd7fb7ee92e09a3b",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_2.png": {
+          "kind": "file",
+          "sha256": "b08af7ecf7802f650829bfc516b65bf539e3d34de63853c7d25c1285f282441b",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_3.png": {
+          "kind": "file",
+          "sha256": "3ca5cfb3454fd239525ac3811b0d339f7cfc7941cc0a288c970bfbe475c08a75",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_4.png": {
+          "kind": "file",
+          "sha256": "a2d5677c85d3be4e20d1e86f2a7e0a6d9aff7d011cda1e16fdbbc2630d1d6b16",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_5.png": {
+          "kind": "file",
+          "sha256": "854996a63d85272765d26011eaf7a5cbccbf994fa64d545fb68917c5ca043131",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_6.png": {
+          "kind": "file",
+          "sha256": "490a91d6765de13630df89e5f9fe3576704d999b50244eef44ac85ea2cfc59ba",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_7.png": {
+          "kind": "file",
+          "sha256": "87dfc78b809619fab3a557560d9c085cd1418abcb181920da8a429e9015c75f8",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_8.png": {
+          "kind": "file",
+          "sha256": "ada3d81396b1d70a27d00df6acfa1558665c698eb878c73e0274d041a0a29252",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/number_9.png": {
+          "kind": "file",
+          "sha256": "1de68c84647cb92af21d54d791893c8e23245a47f223f28e7e162685b28952a7",
+          "mode": 420
+        },
+        "huawei_charger/files/800x1280/percent_sign.png": {
+          "kind": "file",
+          "sha256": "35ec6fda02f01a63f36a08b9bd9b5a30571ae01b18fe26753f38edfccdaa128f",
+          "mode": 420
+        },
+        "lineage.mk": {
+          "kind": "file",
+          "sha256": "9101de9f9ecb0d47783d22e4235cde6b844e35fb966b93d280d3e51dc8fa38af",
+          "mode": 420
+        },
+        "lineage_arm64_bgN4.mk": {
+          "kind": "file",
+          "sha256": "8fdd907d6557867ed51091f287361791d9972d48632ff7fa877b7f5c467fab9d",
+          "mode": 420
+        },
+        "lineage_arm64_bgNE.mk": {
+          "kind": "file",
+          "sha256": "1c9d130ae1312d3a4100d38c00be30aa05bf2e9aa98b8198c4278bb7a01e875a",
+          "mode": 420
+        },
+        "lineage_arm64_bvN4.mk": {
+          "kind": "file",
+          "sha256": "754a8b4f492ebf309d4f5cc6481156526b2fa4e89af6e344beb91a7e391629cd",
+          "mode": 420
+        },
+        "lineage_arm64_bvNE.mk": {
+          "kind": "file",
+          "sha256": "d9a465f7c0b700b4881b3bca79f9dc8e56c89b1beed6ea68c2cb9bef4e8dfdb3",
+          "mode": 420
+        },
+        "overlay/frameworks/base/core/res/res/values/config.xml": {
+          "kind": "file",
+          "sha256": "7ea81c0540801a1ec61f4c353079a04cfa220ffe0655dac84c36130fb479499d",
+          "mode": 420
+        },
+        "overlay/frameworks/base/packages/SystemUI/res/values/dimens.xml": {
+          "kind": "file",
+          "sha256": "875c0f51a116248f08b4c34f5bc50879e267f1614a1ddfc65e510bd06a635989",
+          "mode": 420
+        },
+        "overlay/packages/apps/Settings/res/values/lineage_config.xml": {
+          "kind": "file",
+          "sha256": "3e1103ab59db1570384b9be781176f8625fa6e9d69700bdad8f734340fae2e0d",
+          "mode": 420
+        },
+        "phh-on-boot.sh": {
+          "kind": "file",
+          "sha256": "56fb93c689d782b42d2ae09d721959901ab3bdaa9bf01ba7a824c4eb13848dc3",
+          "mode": 420
+        },
+        "phh-prop-handler.sh": {
+          "kind": "file",
+          "sha256": "8fcd76b6e8eed1f909820873c28e4efae672f5f8ad5715097df7f2ab0759d2a5",
+          "mode": 420
+        },
+        "power-mode-monitor.sh": {
+          "kind": "file",
+          "sha256": "2f868f26938efbd818a94b35af94626c7501873c545d38d54728db62fb331dbe",
+          "mode": 420
+        },
+        "product.prop": {
+          "kind": "file",
+          "sha256": "58a97c1fab26b14a360a8ecdb2e2dd6e99d4998d8c22265ec616a150ffd87432",
+          "mode": 420
+        },
+        "rw-system.sh": {
+          "kind": "file",
+          "sha256": "9660de118584c5d66d567ae146c23fb443da9c531cff63a3d385b66a98170f0d",
+          "mode": 420
+        },
+        "sepolicy/file_contexts": {
+          "kind": "file",
+          "sha256": "a61b2af8cb25f315ce12aa749762040c32d147792391beff45fe12566ee44403",
+          "mode": 420
+        },
+        "sepolicy/genfs_contexts": {
+          "kind": "file",
+          "sha256": "5a9fefeba6e4c42923b8d9170f8b3b96d7fde193a27f9977c24c3096eafa6666",
+          "mode": 420
+        },
+        "sepolicy/hal.te": {
+          "kind": "file",
+          "sha256": "d6d9725c2ccb3cbe9437969b01efe9f04270e70b60d7dd009803f91ffc279db8",
+          "mode": 420
+        },
+        "sepolicy/mediatek.te": {
+          "kind": "file",
+          "sha256": "c2c6ca2ad17976d064d8b3063c7666a80d0df977549ad4bedf485c6bb55ae9fe",
+          "mode": 420
+        },
+        "sepolicy/samsung.te": {
+          "kind": "file",
+          "sha256": "36ec0cd31b250febb62bb46beb2c26c256b6d4434f79b55ed98d01e9ccb07545",
+          "mode": 420
+        },
+        "sepolicy/su.te": {
+          "kind": "file",
+          "sha256": "bf0e1b2258e11184c722bba167101bbffe308bafd95588884cc59b57bd146087",
+          "mode": 420
+        },
+        "system.prop": {
+          "kind": "file",
+          "sha256": "58392c80755a2506d29e274fa90fd5ec349d40a9b391553040f303a4bc5e501e",
+          "mode": 420
+        },
+        "vndk-detect": {
+          "kind": "file",
+          "sha256": "85710c00145ecf09718ece9e4efc091d5d996b3f52ffe71116f4c7564cff5619",
+          "mode": 420
+        },
+        "vndk.rc": {
+          "kind": "file",
+          "sha256": "fda7b939b46f420d2351cc14cc6a293430b4ded4eebfe519a2378b17b8b592dc",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "treble_app",
+      "name": "TrebleDroid/treble_app",
+      "base": "96acf04e74d42a08cc841688686ad3c5d8bd5790",
+      "patch": "patches/0026-treble_app.patch",
+      "sha256": "2e5d2e1b988b29f179c1b6e77590d0cec294b7e4be1dc37bafbd4cfece060e9e",
+      "expected": {
+        "app/src/main/AndroidManifest.xml": {
+          "kind": "file",
+          "sha256": "c804f39f9512ff23ee13de4d7e85aa06a3f9193fa1a1a43359baa15809db1cb7",
+          "mode": 420
+        },
+        "app/src/main/java/me/phh/treble/app/ImsSettings.kt": {
+          "kind": "file",
+          "sha256": "f2fd1321e51a7302d922d0e7fb3cd76085866d24c91ff5a1c145eff6c6861823",
+          "mode": 420
+        },
+        "app/src/main/java/me/phh/treble/app/Misc.kt": {
+          "kind": "file",
+          "sha256": "c308f1b5c25e655ecc5b50a705d16d80641a3212ca0ea6172ffc22432fd62d68",
+          "mode": 420
+        },
+        "app/src/main/java/me/phh/treble/app/MiscSettings.kt": {
+          "kind": "file",
+          "sha256": "decddeb77aefbeb179e5611ff6e6625ef7426bdfd9ecaec63e7411fee1f13643",
+          "mode": 420
+        },
+        "app/src/main/res/drawable-night/ic_settings.xml": {
+          "kind": "file",
+          "sha256": "d7f43b16975eff4d4b20ce791c6e78857ac9a136047100a1a6fe3e2a5c80988f",
+          "mode": 420
+        },
+        "app/src/main/res/drawable/ic_settings.xml": {
+          "kind": "file",
+          "sha256": "0b143ae47470dff0081312a18190dee61b4fc6b61f0b4dbfb291a0663f2a6066",
+          "mode": 420
+        },
+        "app/src/main/res/values/strings.xml": {
+          "kind": "file",
+          "sha256": "c22f37da745dfca4aa53161e10978f1b2671f1c57257d37295ea10afb7d8eba7",
+          "mode": 420
+        },
+        "app/src/main/res/xml/pref_misc.xml": {
+          "kind": "file",
+          "sha256": "0881716f4e4eec89935f37a1cbb8c0e5d940a56abc0ad7f634f8f5b808141c6a",
+          "mode": 420
+        },
+        "build.gradle": {
+          "kind": "file",
+          "sha256": "81f3727938c8b5f38e17120b02eac2bee76a51ac8d1f880b5bd1dc1e1cdd2b7f",
+          "mode": 420
+        },
+        "gradle/wrapper/gradle-wrapper.properties": {
+          "kind": "file",
+          "sha256": "a8f952e13c424e8e056d0aa6f0d05dc8e971d1c45f04ee8183dfb5bd2a56acc7",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "vendor/lptools",
+      "name": "phhusson/vendor_lptools",
+      "base": "c8be7de57b80eab61a6f94ec86464a01fb9056f2",
+      "patch": "patches/0027-vendor__lptools.patch",
+      "sha256": "85611667062f74d2ea27f0c960af4ab09ad08bbdbc5bf57b5c3053f32486abe4",
+      "expected": {
+        "lptools.cc": {
+          "kind": "file",
+          "sha256": "2496a577d530d61816b50334ef795a118561c70a24c7f1e58e53edf956128190",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "vendor/magisk",
+      "name": "phhusson/vendor_magisk",
+      "base": "d8056f8032a0f60f365ddfe5e9fccd7eaf3a655d",
+      "patch": "patches/0028-vendor__magisk.patch",
+      "sha256": "66594e86261359f7fe69d75759f82f83237a5011ac9f14198179426504da420a",
+      "expected": {
+        "Magisk/native/jni/systemproperties/prop_area.cpp": {
+          "kind": "file",
+          "sha256": "57d0dc2d44b59569b7e274b5369c263c97d37cd4d9b365619f9d327fa66d6304",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "external/selinux",
+      "name": "platform/external/selinux",
+      "base": "085c131ad1b984bfa8ffdafee7a976e9d89f403c",
+      "patch": "patches/0029-external__selinux.patch",
+      "sha256": "15f34f57927a9117c08887e462d166bf54d2e0a799c979dd332d2e8dc0a3188b",
+      "expected": {
+        "libselinux/src/label_backends_android.c": {
+          "kind": "file",
+          "sha256": "b89547ac1f6011e07a69b383b92ca96b37475b2d37a373d78c8d5f8b4a6f330e",
+          "mode": 420
+        },
+        "libsepol/cil/src/cil_binary.c": {
+          "kind": "file",
+          "sha256": "afceec91e43047bec7d27a633c172ad47b177c53401d18471ee00bd06da196ca",
+          "mode": 420
+        },
+        "libsepol/cil/src/cil_build_ast.c": {
+          "kind": "file",
+          "sha256": "7776c3407847f8f62cf2abc5054a2f89483391d8689aa66589e6b905cd155d46",
+          "mode": 420
+        },
+        "libsepol/cil/src/cil_post.c": {
+          "kind": "file",
+          "sha256": "2e35e95ec8927331fd44a4da4bb914b3c4e68dab424f615f6d7a2c85806d1751",
+          "mode": 420
+        },
+        "libsepol/cil/src/cil_resolve_ast.c": {
+          "kind": "file",
+          "sha256": "fee89379d06846317a9b0f37678f9524ccdcd3822f423e40367ecda3cc37d8e0",
+          "mode": 420
+        },
+        "libsepol/src/write.c": {
+          "kind": "file",
+          "sha256": "d45b2693d806e572bafd01fc4e4d831cdf0bc28218313ab59fafc7fe5889492c",
+          "mode": 420
+        },
+        "secilc/secilc.c": {
+          "kind": "file",
+          "sha256": "187f7b1cfd6a4e6772291e794d0e62a0491b59f1d2c93dc158f6c3fcedccfc44",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "frameworks/opt/net/ims",
+      "name": "platform/frameworks/opt/net/ims",
+      "base": "336af62cf98cdf44247c78b9645b5a6535837624",
+      "patch": "patches/0030-frameworks__opt__net__ims.patch",
+      "sha256": "6676cfa92ddda2430e2b0633c68c83ce37bc387aa3b03443a3d557f2964a207b",
+      "expected": {
+        "src/java/com/android/ims/ImsCall.java": {
+          "kind": "file",
+          "sha256": "4350bd35d97e1db2012776d62caec35da9dc31158e163ff11062316afa4fff39",
+          "mode": 493
+        },
+        "src/java/com/android/ims/ImsManager.java": {
+          "kind": "file",
+          "sha256": "cce7d42c1c936b3147086e93a86f434cb1f2df09709f7b2f92aa0324ec59ce3e",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/DeviceLock",
+      "name": "platform/packages/modules/DeviceLock",
+      "base": "f93460221d41b5b82dc3de2576e8a64c816d83af",
+      "patch": "patches/0031-packages__modules__DeviceLock.patch",
+      "sha256": "dc293b04473c280d6bace3950fcc93a8aa2a955060a4be988383815ae3215e23",
+      "expected": {
+        "DeviceLockController/src/com/android/devicelockcontroller/SystemDeviceLockManagerImpl.java": {
+          "kind": "file",
+          "sha256": "ad4469e8222d2fd4dbb0bcde39976db7ef995bd6b580829a5c186ce1e39e2d28",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/DnsResolver",
+      "name": "platform/packages/modules/DnsResolver",
+      "base": "278cc346b4a2afd88e9b1155b716ebcb50dff8ca",
+      "patch": "patches/0032-packages__modules__DnsResolver.patch",
+      "sha256": "86c4c42c47f91585e4499cb78af8eebfffab408fefcd44b31000ea03a06687e1",
+      "expected": {
+        "DnsProxyListener.cpp": {
+          "kind": "file",
+          "sha256": "36d2c744855958447d8d9dcedc3ff70764c11db47c37acf4e41fc3a6323b0d2d",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "packages/modules/vndk",
+      "name": "platform/packages/modules/vndk",
+      "base": "f2caada6c9378ba37879c5b952fab07cf0f46e16",
+      "patch": "patches/0033-packages__modules__vndk.patch",
+      "sha256": "c63bc0e25087252a0ad7e54a9de6f05864a6669de0e65c66c0bd45021dbf47bf",
+      "expected": {
+        "apex/Android.bp": {
+          "kind": "file",
+          "sha256": "b014a0701a2755878f0ae271ca7b643b48a54653319f6824a7f5e5898515999f",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "prebuilts/vndk/v29",
+      "name": "platform/prebuilts/vndk/v29",
+      "base": "bef5d37dda9360940964f097d612c8032e140961",
+      "patch": "patches/0034-prebuilts__vndk__v29.patch",
+      "sha256": "63c1b7412437f04f193bd472062f9d98129258eabd46749e2e8abcd4832a76a4",
+      "expected": {
+        "arm64/Android.bp": {
+          "kind": "file",
+          "sha256": "1b1bddab29fca97a35d7f4cb7999f887d343e32a1aa637d5a92978443701225d",
+          "mode": 420
+        },
+        "arm64/arch-arm-armv8-a/shared/vndk-core/android.hardware.audio.common-util.so": {
+          "kind": "file",
+          "sha256": "9f013a9ae740c176e40cf0cb551b4064f006b4e4521f531a3c00ed7800ec9714",
+          "mode": 493
+        },
+        "arm64/arch-arm-armv8-a/shared/vndk-core/android.hardware.audio.common@5.0-util.so": {
+          "kind": "file",
+          "sha256": "dab2a522df80686db851dc9df1ad4b97c8776ad8fc4241a40f7ce6a4b472caef",
+          "mode": 493
+        },
+        "arm64/arch-arm-armv8-a/shared/vndk-core/libeffectsconfig.so": {
+          "kind": "file",
+          "sha256": "e9f99a97871eb74a8bf850b27e2b9be13953c0ec1e7d740f182a0e4b0389699d",
+          "mode": 493
+        },
+        "arm64/arch-arm64-armv8-a/shared/vndk-core/android.hardware.audio.common-util.so": {
+          "kind": "file",
+          "sha256": "673936630574b7adb581c56aaa7a9bd05b75709266d3f86296d1d8334e9dbaba",
+          "mode": 493
+        },
+        "arm64/arch-arm64-armv8-a/shared/vndk-core/android.hardware.audio.common@5.0-util.so": {
+          "kind": "file",
+          "sha256": "0a7ad4dced98166a254c7850f5161d5706311332b2bbeae34178b9bbaa694509",
+          "mode": 493
+        },
+        "arm64/arch-arm64-armv8-a/shared/vndk-core/libeffectsconfig.so": {
+          "kind": "file",
+          "sha256": "ce85d344c42b44dcbfb0907fa88db01c93548525240666d049f85337ba3c55ee",
+          "mode": 493
+        },
+        "arm64/configs/vndkcore.libraries.29.txt": {
+          "kind": "file",
+          "sha256": "53b133e422c992d6dbe6a4a3800e479ab25f3faede610bb34d2d838a1c4792b5",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/apex",
+      "name": "platform/system/apex",
+      "base": "97548ed51112062a4d1762a7dffa0cadcc09bda9",
+      "patch": "patches/0035-system__apex.patch",
+      "sha256": "4e80d195474a7b386920b6b7602b4ba5067fbdab49d2fbc686f39f22d591aa77",
+      "expected": {
+        "apexd/apexd_loop.cpp": {
+          "kind": "file",
+          "sha256": "78023104ceb3740652651649a343901f09eafc3df9d64c8fd6f02d131f0b397b",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/linkerconfig",
+      "name": "platform/system/linkerconfig",
+      "base": "12743643593c9f13784ed30424db2ea09a7bc65f",
+      "patch": "patches/0036-system__linkerconfig.patch",
+      "sha256": "f7583d4fc9f14ccbbf41e7a33a5b4e3ec4159835fe5fcc3ac6a725b366efb1c3",
+      "expected": {
+        "modules/environment.cc": {
+          "kind": "file",
+          "sha256": "f8fc27bba4bbd5cab456588501a139888c462d8cd16ad8649ff39d59f7133221",
+          "mode": 420
+        }
+      }
+    },
+    {
+      "path": "system/memory/lmkd",
+      "name": "platform/system/memory/lmkd",
+      "base": "5352c3c8c9e26cadaf31a80b1223019b2898a385",
+      "patch": "patches/0037-system__memory__lmkd.patch",
+      "sha256": "e162ea84fe56c5af45d76a1ee83f26cfceef6af6c62ce87551ad9f50cb02b652",
+      "expected": {
+        "lmkd.cpp": {
+          "kind": "file",
+          "sha256": "e36308655ec75fd855bc1dbb944d15d0110230829a13a775f5f7a4f4816f2fc4",
+          "mode": 420
+        }
+      }
+    }
+  ],
+  "payload": {
+    "packages/apps/Settings/res/drawable/ic_y700_bypass.xml": {
+      "kind": "file",
+      "sha256": "b946b16ad101d969ca60101590d4156ea2752b914e33a57a6b71da2943e91f66",
+      "mode": 420
+    },
+    "packages/apps/Settings/res/values-ru/y700_bypass_strings.xml": {
+      "kind": "file",
+      "sha256": "7353b8a62e36d21069b9849a953b949cf04b0e09ad4067642e5dc9a32d80e499",
+      "mode": 420
+    },
+    "packages/apps/Settings/res/values/y700_bypass_strings.xml": {
+      "kind": "file",
+      "sha256": "43a76cd5b2fa0bcbb56a924341262f5245dfa6bb99981cd557038fb5e0174812",
+      "mode": 420
+    },
+    "packages/apps/Settings/src/com/android/settings/fuelgauge/y700/Y700BypassClient.java": {
+      "kind": "file",
+      "sha256": "d381a691c1d29f8dc4d8a1964474204bfdb92bc4c814e6e865e15e7b20831951",
+      "mode": 420
+    },
+    "packages/apps/Settings/src/com/android/settings/fuelgauge/y700/Y700BypassPreferenceController.java": {
+      "kind": "file",
+      "sha256": "4d8deef499ad08a985310a4833ff43ee72935cb82d96a58ccf2a171eb89e169c",
+      "mode": 420
+    },
+    "packages/apps/Settings/src/com/android/settings/fuelgauge/y700/Y700BypassTile.java": {
+      "kind": "file",
+      "sha256": "10536b716784ec8d4fba744c7f1c6887c742daf4291350c5bf3a0c773fb78a45",
+      "mode": 420
+    },
+    "packages/apps/Settings/src/com/android/settings/fuelgauge/y700/Y700BypassTiles.java": {
+      "kind": "file",
+      "sha256": "e7007641dc59ea92aeb3b884809551783281777e93cae15cb5d164339110fcfc",
+      "mode": 420
+    },
+    "system/sepolicy/private/y700_bypass.te": {
+      "kind": "file",
+      "sha256": "6d96a2058692f5d243d73cbfa88f2f3455deaf05a6a6dfe6d10f77076a312a5b",
+      "mode": 420
+    },
+    "system/sepolicy/private/y700_bypass_vendor.cil": {
+      "kind": "file",
+      "sha256": "8d6f541c0be753edcdc6b051c483a58336b583930bc747264e6f064e6c4376c7",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/Android.bp": {
+      "kind": "file",
+      "sha256": "354b2a462576815d4852e624b12842041917ab6288e580a56c19714bc5984339",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/aidl/org/lineageos/y700/BypassState.aidl": {
+      "kind": "file",
+      "sha256": "a74323c4a91859e727dff594c0f5f017a28923d805bf3003673c96ea117ce7b7",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/aidl/org/lineageos/y700/IY700Bypass.aidl": {
+      "kind": "file",
+      "sha256": "96dc7cbf4adab400aa5c774f4c5e0dcf13987a6a51311a2a2a55edc240b56def",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/product.mk": {
+      "kind": "file",
+      "sha256": "2fd0688de5a2ba154fee617fc55c62be8c7181b67c1dd10208bab598d989b04b",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/src/Controller.cpp": {
+      "kind": "file",
+      "sha256": "820e6f78de69ab39de3a1b90171dd5edde1c2310d81ed5080c0cb51022d59c27",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/src/Controller.h": {
+      "kind": "file",
+      "sha256": "b2fb8f8411cb58b6319f87f59baed9d859cdade78a636267963d66edf44ccef9",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/src/Platform.cpp": {
+      "kind": "file",
+      "sha256": "aa651e70ee44f450847da26a8fd38439cd64deebc9c0c79367bef2a367a468d3",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/src/Platform.h": {
+      "kind": "file",
+      "sha256": "76b588f4e28eef17a0df8e123248122dba9d80c4eeb89aa12c90bf67e939cfbe",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/src/Service.cpp": {
+      "kind": "file",
+      "sha256": "6a1314bffae0a5765a74da7be98aa38f2e2ded30581371740b39aac0d3a9383f",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/tests/ControllerTest.cpp": {
+      "kind": "file",
+      "sha256": "5ec50731357f8fd981aacb1d0d58fa179b4e84a2da67e61fc67f76ae784b1a68",
+      "mode": 420
+    },
+    "packages/services/Y700Bypass/y700_bypass.rc": {
+      "kind": "file",
+      "sha256": "745bda4b5249274f1d14bc3bf9d488e5d0ed74d7baf9996265db864dbcf385c4",
+      "mode": 420
+    }
+  },
+  "explicit_exclusions": [],
+  "export_method": "original upstream revisions -> current working files; local commits included"
+}

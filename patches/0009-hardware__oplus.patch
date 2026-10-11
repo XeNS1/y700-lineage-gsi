@@ -1,0 +1,12 @@
+diff --git a/fingerprint/Android.bp b/fingerprint/Android.bp
+index 64d3a15651957ff549a650ed928b494deec3b61a..93a7e0adf74c6a6bbaf797d9c7bfc8802f760e23 100644
+--- a/fingerprint/Android.bp
++++ b/fingerprint/Android.bp
+@@ -10,7 +10,4 @@ cc_library_static {
+     include_dirs: [
+         "frameworks/native/services/surfaceflinger/CompositionEngine/include",
+     ],
+-    header_libs: [
+-        "generated_kernel_headers",
+-    ],
+ }

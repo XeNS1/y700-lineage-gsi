@@ -1,0 +1,16 @@
+;; SPDX-License-Identifier: Apache-2.0
+;; Keep the stock vendor label and stock HAL permissions intact. A platform-only
+;; GSI build does not declare the device's private vendor type. CIL resolves this
+;; optional when init links the new platform policy with the stock vendor policy.
+;; No permission is granted if that vendor type is absent.
+(optional y700_bypass_stock_vendor
+    (allow y700_bypassd vendor_sysfs_battery_supply (file (getattr open read write)))
+    (allow init vendor_sysfs_battery_supply (file (getattr open write)))
+)
+
+;; Read-only equivalent of get_prop(y700_bypassd, custom_version_prop).
+;; The profile reads ro.lineage.version. Keep this independent from the stock
+;; battery block; resolve the private Lineage type when the policies are linked.
+(optional y700_bypass_lineage_version
+    (allow y700_bypassd custom_version_prop (file (getattr open read map)))
+)

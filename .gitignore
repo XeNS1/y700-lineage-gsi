@@ -1,0 +1,19 @@
+# This repository contains a source recipe, not Android build output.
+/.repo/
+/source/
+/out/
+/out-y700/
+/inputs/
+/host/
+/logs/
+/tmp/
+*.img
+*.img.*
+*.apk
+*.zip
+*.tar
+*.tar.*
+*.log
+*.pyc
+__pycache__/
+/.DS_Store

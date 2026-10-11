@@ -1,0 +1,520 @@
+diff --git a/android/app/src/com/android/bluetooth/hfp/HeadsetStateMachine.java b/android/app/src/com/android/bluetooth/hfp/HeadsetStateMachine.java
+index 8978797a3d518f80e22d97f5c301fb48566c4291..baf7ce1687ddc9a8c29c189dea01be5808911b16 100644
+--- a/android/app/src/com/android/bluetooth/hfp/HeadsetStateMachine.java
++++ b/android/app/src/com/android/bluetooth/hfp/HeadsetStateMachine.java
+@@ -166,6 +166,7 @@ class HeadsetStateMachine extends StateMachine {
+     private boolean mHasWbsEnabled = false;
+     private boolean mHasSwbLc3Enabled = false;
+     private boolean mHasSwbAptXEnabled = false;
++    private int mReportScoSampleRate = 0;
+     // AT Phone book keeps a group of states used by AT+CPBR commands
+     @VisibleForTesting final AtPhonebook mPhonebook;
+     // HSP specific
+@@ -280,6 +281,7 @@ class HeadsetStateMachine extends StateMachine {
+         mHasNrecEnabled = false;
+         mHasSwbLc3Enabled = false;
+         mHasSwbAptXEnabled = false;
++        mReportScoSampleRate = 0;
+     }
+ 
+     public void dump(StringBuilder sb) {
+@@ -586,6 +588,7 @@ class HeadsetStateMachine extends StateMachine {
+             mHasSwbLc3Enabled = false;
+             mHasNrecEnabled = false;
+             mHasSwbAptXEnabled = false;
++            mReportScoSampleRate = 0;
+             mHasRfcommConnectionCompleted = false;
+ 
+             if (mHeadsetService.mPendingScoConnectionDevice != null
+@@ -1828,6 +1831,9 @@ class HeadsetStateMachine extends StateMachine {
+             am.setParameters("bt_swb=" + (mHasSwbAptXEnabled ? "0" : "65535"));
+         }
+         am.setBluetoothHeadsetProperties(getCurrentDeviceName(), mHasNrecEnabled, mHasWbsEnabled);
++        if (mReportScoSampleRate > 0) {
++            am.setParameters("g_sco_samplerate=" + mReportScoSampleRate);
++        }
+     }
+ 
+     @VisibleForTesting
+@@ -1982,12 +1988,15 @@ class HeadsetStateMachine extends StateMachine {
+         switch (wbsConfig) {
+             case HeadsetHalConstants.BTHF_WBS_YES -> {
+                 mHasWbsEnabled = true;
++                mReportScoSampleRate = 16000;
+                 if (mHeadsetService.isAptXSwbEnabled()) {
+                     mHasSwbAptXEnabled = false;
+                 }
+             }
+-            case HeadsetHalConstants.BTHF_WBS_NO, HeadsetHalConstants.BTHF_WBS_NONE ->
++            case HeadsetHalConstants.BTHF_WBS_NO, HeadsetHalConstants.BTHF_WBS_NONE -> {
+                     mHasWbsEnabled = false;
++                    mReportScoSampleRate = 8000;
++            }
+             default -> {
+                 Log.e(TAG, "processWBSEvent: unknown wbsConfig " + wbsConfig);
+                 return;
+diff --git a/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc b/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc
+index 201cae87bbc946953666faecf26a3bab04be7cf2..ec238d5717614077ab8fa9ec251bf06a6ecb9ca1 100644
+--- a/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc
++++ b/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.cc
+@@ -59,7 +59,7 @@ BluetoothAudioClientInterface::~BluetoothAudioClientInterface() {
+ bool BluetoothAudioClientInterface::IsValid() const { return provider_ != nullptr; }
+ 
+ bool BluetoothAudioClientInterface::is_aidl_available() {
+-  return AServiceManager_isDeclared(kDefaultAudioProviderFactoryInterface.c_str());
++  return AServiceManager_isDeclared(audioProviderFactoryInterface().c_str());
+ }
+ 
+ std::vector<AudioCapabilities> BluetoothAudioClientInterface::GetAudioCapabilities() const {
+@@ -73,7 +73,7 @@ std::vector<AudioCapabilities> BluetoothAudioClientInterface::GetAudioCapabiliti
+     return capabilities;
+   }
+   auto provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-          AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++          AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+ 
+   if (provider_factory == nullptr) {
+     log::error("can't get capability from unknown factory");
+@@ -98,7 +98,7 @@ BluetoothAudioClientInterface::GetProviderInfo(
+ 
+   if (provider_factory == nullptr) {
+     provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-            AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++            AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+   }
+ 
+   if (provider_factory == nullptr) {
+@@ -174,7 +174,7 @@ void BluetoothAudioClientInterface::FetchAudioProvider() {
+   // re-registered, so we need to re-fetch the service.
+   for (int retry_no = 0; retry_no < kFetchAudioProviderRetryNumber; ++retry_no) {
+     auto provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-            AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++            AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+ 
+     if (provider_factory == nullptr) {
+       log::error("can't get capability from unknown factory");
+diff --git a/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.h b/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.h
+index e492fde23aed6afda446fbfbbff970bb4c47f120..a24ffefedf1dd8fedf4fad68462d4f2e12d14ba8 100644
+--- a/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.h
++++ b/system/audio_hal_interface/aidl/a2dp/client_interface_aidl.h
+@@ -28,6 +28,7 @@
+ #include "bta/le_audio/broadcaster/broadcaster_types.h"
+ #include "bta/le_audio/le_audio_types.h"
+ #include "transport_instance.h"
++#include "osi/include/properties.h"
+ 
+ // Keep after audio_aidl_interfaces.h because of <base/logging.h>
+ // conflicting definitions.
+@@ -164,6 +165,12 @@ protected:
+   //     "android.hardware.bluetooth.audio.IBluetoothAudioProviderFactory/default";
+   static inline const std::string kDefaultAudioProviderFactoryInterface =
+           std::string() + IBluetoothAudioProviderFactory::descriptor + "/default";
++  static inline const std::string kSystemAudioProviderFactoryInterface =
++          std::string() + IBluetoothAudioProviderFactory::descriptor + "/sysbta";
++  static inline const std::string audioProviderFactoryInterface() {
++      return osi_property_get_bool("persist.bluetooth.system_audio_hal.enabled", false)
++       ? kSystemAudioProviderFactoryInterface : kDefaultAudioProviderFactoryInterface;
++  }
+ 
+ private:
+   IBluetoothTransportInstance* transport_;
+diff --git a/system/audio_hal_interface/aidl/client_interface_aidl.cc b/system/audio_hal_interface/aidl/client_interface_aidl.cc
+index c1ce661ff71b3fcc305e6de1666342d099db4714..401fd5b53197320be13c1fa1f0e51f399577cf59 100644
+--- a/system/audio_hal_interface/aidl/client_interface_aidl.cc
++++ b/system/audio_hal_interface/aidl/client_interface_aidl.cc
+@@ -73,7 +73,7 @@ BluetoothAudioClientInterface::BluetoothAudioClientInterface(IBluetoothTransport
+ bool BluetoothAudioClientInterface::IsValid() const { return provider_ != nullptr; }
+ 
+ bool BluetoothAudioClientInterface::is_aidl_available() {
+-  return AServiceManager_isDeclared(kDefaultAudioProviderFactoryInterface.c_str());
++  return AServiceManager_isDeclared(audioProviderFactoryInterface().c_str());
+ }
+ 
+ std::vector<AudioCapabilities> BluetoothAudioClientInterface::GetAudioCapabilities() const {
+@@ -87,7 +87,7 @@ std::vector<AudioCapabilities> BluetoothAudioClientInterface::GetAudioCapabiliti
+     return capabilities;
+   }
+   auto provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-          AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++          AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+ 
+   if (provider_factory == nullptr) {
+     log::error("can't get capability from unknown factory");
+@@ -112,7 +112,7 @@ BluetoothAudioClientInterface::GetProviderInfo(
+ 
+   if (provider_factory == nullptr) {
+     provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-            AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++            AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+   }
+ 
+   if (provider_factory == nullptr) {
+@@ -144,7 +144,7 @@ void BluetoothAudioClientInterface::FetchAudioProvider() {
+   // re-registered, so we need to re-fetch the service.
+   for (int retry_no = 0; retry_no < kFetchAudioProviderRetryNumber; ++retry_no) {
+     auto provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-            AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++            AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+ 
+     if (provider_factory == nullptr) {
+       log::error("can't get capability from unknown factory");
+diff --git a/system/audio_hal_interface/aidl/client_interface_aidl.h b/system/audio_hal_interface/aidl/client_interface_aidl.h
+index a3c60384ab53f80cc932918043213c1004466eda..ee5901e32a44724adb9de7ae15e90192428fa55b 100644
+--- a/system/audio_hal_interface/aidl/client_interface_aidl.h
++++ b/system/audio_hal_interface/aidl/client_interface_aidl.h
+@@ -29,6 +29,7 @@
+ #include "bta/le_audio/broadcaster/broadcaster_types.h"
+ #include "bta/le_audio/le_audio_types.h"
+ #include "transport_instance.h"
++#include "osi/include/properties.h"
+ 
+ namespace bluetooth {
+ namespace audio {
+@@ -150,6 +151,12 @@ protected:
+   //     "android.hardware.bluetooth.audio.IBluetoothAudioProviderFactory/default";
+   static inline const std::string kDefaultAudioProviderFactoryInterface =
+           std::string() + IBluetoothAudioProviderFactory::descriptor + "/default";
++  static inline const std::string kSystemAudioProviderFactoryInterface =
++          std::string() + IBluetoothAudioProviderFactory::descriptor + "/sysbta";
++  static inline const std::string audioProviderFactoryInterface() {
++      return osi_property_get_bool("persist.bluetooth.system_audio_hal.enabled", false)
++       ? kSystemAudioProviderFactoryInterface : kDefaultAudioProviderFactoryInterface;
++  }
+ 
+ private:
+   IBluetoothTransportInstance* transport_;
+diff --git a/system/audio_hal_interface/hal_version_manager.cc b/system/audio_hal_interface/hal_version_manager.cc
+index 1a92c1aeb2a43685c8953f946d224167401d0d14..bb27167ca2c930f01bef3b60210b7a30d9d3df3a 100644
+--- a/system/audio_hal_interface/hal_version_manager.cc
++++ b/system/audio_hal_interface/hal_version_manager.cc
+@@ -20,6 +20,7 @@
+ #include <android/hidl/manager/1.2/IServiceManager.h>
+ #include <bluetooth/log.h>
+ #include <hidl/ServiceManagement.h>
++#include "osi/include/properties.h"
+ 
+ #include <memory>
+ #include <mutex>
+@@ -34,6 +35,12 @@ using ::aidl::android::hardware::bluetooth::audio::IBluetoothAudioProviderFactor
+ 
+ static const std::string kDefaultAudioProviderFactoryInterface =
+         std::string() + IBluetoothAudioProviderFactory::descriptor + "/default";
++static const std::string kSystemAudioProviderFactoryInterface =
++        std::string() + IBluetoothAudioProviderFactory::descriptor + "/sysbta";
++static inline const std::string audioProviderFactoryInterface() {
++    return osi_property_get_bool("persist.bluetooth.system_audio_hal.enabled", false)
++     ? kSystemAudioProviderFactoryInterface : kDefaultAudioProviderFactoryInterface;
++}
+ 
+ std::string toString(BluetoothAudioHalTransport transport) {
+   switch (transport) {
+@@ -74,7 +81,7 @@ BluetoothAudioHalVersion GetAidlInterfaceVersion() {
+   static auto aidl_version = []() -> BluetoothAudioHalVersion {
+     int version = 0;
+     auto provider_factory = IBluetoothAudioProviderFactory::fromBinder(::ndk::SpAIBinder(
+-            AServiceManager_waitForService(kDefaultAudioProviderFactoryInterface.c_str())));
++            AServiceManager_waitForService(audioProviderFactoryInterface().c_str())));
+ 
+     if (provider_factory == nullptr) {
+       log::error("getInterfaceVersion: Can't get aidl version from unknown factory");
+@@ -139,7 +146,7 @@ android::sp<IBluetoothAudioProvidersFactory_2_0> HalVersionManager::GetProviders
+ 
+ HalVersionManager::HalVersionManager() {
+   hal_transport_ = BluetoothAudioHalTransport::UNKNOWN;
+-  if (AServiceManager_checkService(kDefaultAudioProviderFactoryInterface.c_str()) != nullptr) {
++  if (AServiceManager_checkService(audioProviderFactoryInterface().c_str()) != nullptr) {
+     hal_version_ = GetAidlInterfaceVersion();
+     hal_transport_ = BluetoothAudioHalTransport::AIDL;
+     return;
+diff --git a/system/btif/src/btif_a2dp_sink.cc b/system/btif/src/btif_a2dp_sink.cc
+index d20be9dc1226f8a0ca966ae9f5f9833ab70fa019..c07249e06a407177543b30d3289ef61543a3407c 100644
+--- a/system/btif/src/btif_a2dp_sink.cc
++++ b/system/btif/src/btif_a2dp_sink.cc
+@@ -203,7 +203,7 @@ bool btif_a2dp_sink_init() {
+   /* Schedule the rest of the operations */
+   if (!btif_a2dp_sink_cb.worker_thread.EnableRealTimeScheduling()) {
+ #if defined(__ANDROID__)
+-    log::fatal("Failed to increase A2DP decoder thread priority");
++    log::error("Failed to increase A2DP decoder thread priority");
+ #endif
+   }
+   btif_a2dp_sink_cb.worker_thread.DoInThread(base::BindOnce(btif_a2dp_sink_init_delayed));
+diff --git a/system/btif/src/btif_a2dp_source.cc b/system/btif/src/btif_a2dp_source.cc
+index ae00fa432306e325895884f0a33040ae426fcfb3..b64405f93b20ea97b4fce1c73aebc42e225fe7f0 100644
+--- a/system/btif/src/btif_a2dp_source.cc
++++ b/system/btif/src/btif_a2dp_source.cc
+@@ -335,7 +335,7 @@ bool btif_a2dp_source_init(void) {
+   if (com_android_bluetooth_flags_a2dp_source_null_fixed_queue()) {
+     if (!btif_a2dp_source_thread.EnableRealTimeScheduling()) {
+ #if defined(__ANDROID__)
+-      log::fatal("unable to enable real time scheduling");
++      log::error("unable to enable real time scheduling");
+ #endif
+     }
+   }
+@@ -457,7 +457,7 @@ static void btif_a2dp_source_startup_delayed() {
+ 
+   if (!btif_a2dp_source_thread.EnableRealTimeScheduling()) {
+ #if defined(__ANDROID__)
+-    log::fatal("unable to enable real time scheduling");
++    log::error("unable to enable real time scheduling");
+ #endif
+   }
+   if (!bluetooth::audio::a2dp::init(get_main_thread(), &a2dp_stream_callbacks,
+diff --git a/system/device/src/esco_parameters.cc b/system/device/src/esco_parameters.cc
+index ac60538bdaa7b9e4339dac8de416d848b565a2bb..7ec2492739569cf94d0a109060cab493ddbc3644 100644
+--- a/system/device/src/esco_parameters.cc
++++ b/system/device/src/esco_parameters.cc
+@@ -26,7 +26,8 @@
+ 
+ using namespace bluetooth;
+ 
+-static const enh_esco_params_t default_esco_parameters[ESCO_NUM_CODECS] = {
++#include <cutils/properties.h>
++static enh_esco_params_t default_esco_parameters[ESCO_NUM_CODECS] = {
+         // CVSD D1
+         {
+                 .transmit_bandwidth = TXRX_64KBITS_RATE,
+@@ -382,6 +383,11 @@ enh_esco_params_t esco_parameters_for_codec(esco_codec_t codec, bool offload) {
+     }
+   }
+ 
++  int escoTransportUnitSize = property_get_int32("persist.sys.bt.esco_transport_unit_size", 0);
++  if(escoTransportUnitSize) {
++    default_esco_parameters[codec].input_transport_unit_size = escoTransportUnitSize;
++    default_esco_parameters[codec].output_transport_unit_size = escoTransportUnitSize;
++  }
+   if (offload) {
+     if (codec == ESCO_CODEC_SWB_Q0 || codec == ESCO_CODEC_SWB_Q1 || codec == ESCO_CODEC_SWB_Q2 ||
+         codec == ESCO_CODEC_SWB_Q3) {
+diff --git a/system/gd/hci/controller_impl.cc b/system/gd/hci/controller_impl.cc
+index 69b2294bbe6b38cb5c1bf8e6b17e2e65b4f320a4..cadfb507c3e61f657d0e052151483e2aa92e3696 100644
+--- a/system/gd/hci/controller_impl.cc
++++ b/system/gd/hci/controller_impl.cc
+@@ -21,6 +21,7 @@
+ #include <bluetooth/metrics/os_metrics.h>
+ #include <com_android_bluetooth_flags.h>
+ 
++#include <base/strings/string_split.h>
+ #include <future>
+ #include <memory>
+ #include <string>
+@@ -35,6 +36,8 @@
+ #include "sysprops/sysprops_module.h"
+ #endif
+ 
++using bluetooth::os::GetSystemProperty;
++
+ namespace bluetooth {
+ namespace hci {
+ 
+@@ -364,7 +367,22 @@ struct ControllerImpl::impl {
+     ASSERT(complete_view.IsValid());
+     ErrorCode status = complete_view.GetStatus();
+     log::assert_that(status == ErrorCode::SUCCESS, "Status {}", ErrorCodeText(status));
+-    local_supported_commands_ = complete_view.GetSupportedCommands();
++
++    auto local_commands = complete_view.GetSupportedCommands();
++    std::string ignored_commands = GetSystemProperty("persist.sys.bt.unsupported.commands").value_or("");
++
++    if (ignored_commands != "") {
++        auto s = base::SplitString(ignored_commands, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++        for(auto command: s) {
++            int index = std::stoi(command);
++            log::warn("Ignoring local supported command {}", index);
++            uint16_t byte_index = index / 10;
++            uint16_t bit_index = index % 10;
++            local_commands[byte_index] &= ~(1 << bit_index);
++        }
++    }
++
++    local_supported_commands_ = local_commands;
+   }
+ 
+   void read_local_extended_features_complete_handler(std::promise<void> promise,
+@@ -374,7 +392,24 @@ struct ControllerImpl::impl {
+     ErrorCode status = complete_view.GetStatus();
+     log::assert_that(status == ErrorCode::SUCCESS, "Status {}", ErrorCodeText(status));
+     uint8_t page_number = complete_view.GetPageNumber();
+-    extended_lmp_features_array_.push_back(complete_view.GetExtendedLmpFeatures());
++
++    auto lmp_features = complete_view.GetExtendedLmpFeatures();
++
++    std::string ignored_features = GetSystemProperty("persist.sys.bt.unsupported.ogfeatures").value_or("");
++
++    if (ignored_features != "") {
++        auto s = base::SplitString(ignored_features, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++        int offset = page_number * 64;
++        for(auto feature: s) {
++            int index = std::stoi(feature) - offset;
++            if(index >= 0 && index < 64) {
++                log::warn("Ignoring local supported feature {}", index);
++                lmp_features &= ~(1ULL << index);
++            }
++        }
++    }
++    extended_lmp_features_array_.push_back(lmp_features);
++
+     if (page_number == 0 && local_version_information_.manufacturer_name_ == LMP_COMPID_INTEL &&
+         local_version_information_.lmp_version_ == LmpVersion::V_4_2 &&
+         local_version_information_.lmp_subversion_ == LMP_SUBVERSION_INTEL_AC7265) {
+@@ -537,7 +572,20 @@ struct ControllerImpl::impl {
+     ASSERT(complete_view.IsValid());
+     ErrorCode status = complete_view.GetStatus();
+     log::assert_that(status == ErrorCode::SUCCESS, "Status {}", status, ErrorCodeText(status));
+-    le_local_supported_features_ = complete_view.GetLeFeatures();
++
++    auto local_features = complete_view.GetLeFeatures();
++    std::string ignored_features = GetSystemProperty("persist.sys.bt.unsupported.lefeatures").value_or("");
++
++    if (ignored_features != "") {
++        auto s = base::SplitString(ignored_features, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++        for(auto feature: s) {
++            int index = std::stoi(feature);
++            log::warn("Ignoring local supported feature {}", index);
++            local_features &= ~(1ULL << index);
++        }
++    }
++
++    le_local_supported_features_ = local_features;
+   }
+ 
+   void le_read_supported_states_handler(CommandCompleteView view) {
+@@ -545,7 +593,20 @@ struct ControllerImpl::impl {
+     ASSERT(complete_view.IsValid());
+     ErrorCode status = complete_view.GetStatus();
+     log::assert_that(status == ErrorCode::SUCCESS, "Status {}", ErrorCodeText(status));
+-    le_supported_states_ = complete_view.GetLeStates();
++
++    auto local_states = complete_view.GetLeStates();
++    std::string ignored_states = GetSystemProperty("persist.sys.bt.unsupported.states").value_or("");
++
++    if (ignored_states != "") {
++        auto s = base::SplitString(ignored_states, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
++        for(auto state: s) {
++            int index = std::stoi(state);
++            log::warn("Ignoring local supported state {}", index);
++            local_states &= ~(1ULL << index);
++        }
++    }
++
++    le_supported_states_ = local_states;
+   }
+ 
+   void le_read_accept_list_size_handler(CommandCompleteView view) {
+@@ -633,6 +694,13 @@ struct ControllerImpl::impl {
+     }
+     vendor_capabilities_.is_supported_ = 0x01;
+ 
++    int vendor_cap_max = 0xffff;
++    std::string vendor_cap_max_prop = GetSystemProperty("persist.sys.bt.max_vendor_cap").value_or("");
++    if (vendor_cap_max_prop != "") {
++        vendor_cap_max = std::stoi(vendor_cap_max_prop);
++    }
++    if (vendor_cap_max < 55) return;
++
+     // v0.55
+     BaseVendorCapabilities base_vendor_capabilities = complete_view.GetBaseVendorCapabilities();
+     vendor_capabilities_.max_advt_instances_ = base_vendor_capabilities.max_advt_instances_;
+@@ -652,6 +720,8 @@ struct ControllerImpl::impl {
+       return;
+     }
+ 
++    if (vendor_cap_max < 95) return;
++
+     // v0.95
+     auto v95 = LeGetVendorCapabilitiesComplete095View::Create(complete_view);
+     if (!v95.IsValid()) {
+@@ -668,6 +738,8 @@ struct ControllerImpl::impl {
+       return;
+     }
+ 
++    if (vendor_cap_max < 96) return;
++
+     // v0.96
+     auto v96 = LeGetVendorCapabilitiesComplete096View::Create(v95);
+     if (!v96.IsValid()) {
+@@ -682,6 +754,8 @@ struct ControllerImpl::impl {
+       return;
+     }
+ 
++    if (vendor_cap_max < 98) return;
++
+     // v0.98
+     auto v98 = LeGetVendorCapabilitiesComplete098View::Create(v96);
+     if (!v98.IsValid()) {
+diff --git a/system/gd/hci/hci_layer.cc b/system/gd/hci/hci_layer.cc
+index 0ab2036af1878921ca46aad287a6a5bdac8f9450..ee3b7911f5bf0c4b8a12d0201b088b8919a82162 100644
+--- a/system/gd/hci/hci_layer.cc
++++ b/system/gd/hci/hci_layer.cc
+@@ -255,8 +255,10 @@ struct HciLayer::impl {
+     using WaitingFor = CommandQueueEntry::WaitingFor;
+     WaitingFor waiting_for = command_queue_.front().waiting_for_;
+     CommandStatusView status_view = CommandStatusView::Create(event);
+-    if (is_vendor_specific && (is_status && waiting_for == WaitingFor::COMPLETE) &&
+-        (status_view.IsValid() && status_view.GetStatus() == ErrorCode::UNKNOWN_HCI_COMMAND)) {
++    if ((is_vendor_specific && (is_status && waiting_for == WaitingFor::COMPLETE) &&
++        (status_view.IsValid() && status_view.GetStatus() == ErrorCode::UNKNOWN_HCI_COMMAND)) ||
++        ((is_status && waiting_for == WaitingFor::COMPLETE) &&
++        (status_view.IsValid() && status_view.GetStatus() == ErrorCode::UNSUPPORTED_REMOTE_OR_LMP_FEATURE))) {
+       // If this is a command status of a vendor specific command, and command complete is expected,
+       // we can't treat this as hard failure since we have no way of probing this lack of support at
+       // earlier time. Instead we let the command complete handler handle a empty Command Complete
+@@ -464,6 +466,10 @@ struct HciLayer::impl {
+         auto view = CommandCompleteView::Create(event);
+         log::assert_that(view.IsValid(), "assert failed: view.IsValid()");
+         auto op_code = view.GetCommandOpCode();
++        if (op_code == OpCode::READ_REMOTE_VERSION_INFORMATION) {
++            log::warn("OpCode 0x%02hx (%s) is not in the command queue, skipped.", op_code, OpCodeText(op_code).c_str());
++            return;
++        }
+         log::assert_that(op_code == OpCode::NONE,
+                          "Received {} event with OpCode {} without a waiting command(is the HAL "
+                          "sending commands, but not handling the events?)",
+@@ -473,6 +479,10 @@ struct HciLayer::impl {
+         auto view = CommandStatusView::Create(event);
+         log::assert_that(view.IsValid(), "assert failed: view.IsValid()");
+         auto op_code = view.GetCommandOpCode();
++        if (op_code == OpCode::READ_REMOTE_VERSION_INFORMATION) {
++            log::warn("OpCode 0x%02hx (%s) is not in the command queue, skipped.", op_code, OpCodeText(op_code).c_str());
++            return;
++        }
+         log::assert_that(op_code == OpCode::NONE,
+                          "Received {} event with OpCode {} without a waiting command(is the HAL "
+                          "sending commands, but not handling the events?)",
+diff --git a/system/osi/src/alarm.cc b/system/osi/src/alarm.cc
+index ee626452212310234dfce577ea19d9816509e2ab..4b1838517e56eea4188fce2bc34c6adfbbe0abd5 100644
+--- a/system/osi/src/alarm.cc
++++ b/system/osi/src/alarm.cc
+@@ -687,7 +687,17 @@ static bool timer_create_internal(const clockid_t clock_id, timer_t* timer) {
+   sigevent.sigev_notify = SIGEV_THREAD;
+   sigevent.sigev_notify_function = timer_callback;
+   sigevent.sigev_notify_attributes = &thread_attr;
+-  if (timer_create(clock_id, &sigevent, timer) == -1) {
++
++  int ret = timer_create(clock_id, &sigevent, timer);
++  if (ret == -1) {
++       log::error("{} failed to create timer with RT err {}... Try again without RT", __func__, strerror(errno));
++      // Recreate timer without RT priority
++      memset(&sigevent, 0, sizeof(sigevent));
++      sigevent.sigev_notify = SIGEV_THREAD;
++      sigevent.sigev_notify_function = (void (*)(union sigval))timer_callback;
++      ret = timer_create(clock_id, &sigevent, timer);
++  }
++  if (ret == -1) {
+     log::error("unable to create timer with clock {}: {}", clock_id, strerror(errno));
+     if (clock_id == CLOCK_BOOTTIME_ALARM) {
+       log::error(
+diff --git a/system/stack/btu/main_thread.cc b/system/stack/btu/main_thread.cc
+index b24041a0191f0695c582877f5fe10edf1d96bf50..ac5a320bf0d5222d851a2f5a7c64f3c64c2834e6 100644
+--- a/system/stack/btu/main_thread.cc
++++ b/system/stack/btu/main_thread.cc
+@@ -69,7 +69,7 @@ void main_thread_start_up() {
+   }
+   if (!main_thread.EnableRealTimeScheduling()) {
+ #if defined(__ANDROID__)
+-    log::fatal("unable to enable real time scheduling");
++    log::error("unable to enable real time scheduling");
+ #else
+     log::error("unable to enable real time scheduling");
+ #endif

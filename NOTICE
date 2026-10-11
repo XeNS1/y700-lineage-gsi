@@ -1,0 +1,9 @@
+Y700 LineageOS GSI integration and export tooling
+Copyright 2026 Y700 LineageOS GSI contributors
+
+New integration/export code: Apache License 2.0 (see LICENSE).
+Upstream modifications retain the licenses and notices of their original projects.
+See manifests/base.xml for the full source project list and pinned revisions.
+
+Upstream projects include LineageOS, Android Open Source Project, TrebleDroid,
+PHH and MisterZtr/LineageOS_gsi. This project is unofficial.

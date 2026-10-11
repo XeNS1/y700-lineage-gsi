@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vector conversion of the user's Battery charging.svg; original path retained. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="48" android:viewportHeight="48"
+    android:tint="?android:attr/colorControlNormal">
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000"
+        android:strokeWidth="4" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M10 36H6C4.93913 36 3.92172 35.5786 3.17157 34.8284C2.42143 34.0783 2 33.0609 2 32V16C2 14.9391 2.42143 13.9217 3.17157 13.1716C3.92172 12.4214 4.93913 12 6 12H12.38M30 12H34C35.0609 12 36.0783 12.4214 36.8284 13.1716C37.5786 13.9217 38 14.9391 38 16V32C38 33.0609 37.5786 34.0783 36.8284 34.8284C36.0783 35.5786 35.0609 36 34 36H27.62M46 26V22M22 12L14 24H26L18 36" />
+</vector>

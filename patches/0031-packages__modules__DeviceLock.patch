@@ -1,0 +1,16 @@
+diff --git a/DeviceLockController/src/com/android/devicelockcontroller/SystemDeviceLockManagerImpl.java b/DeviceLockController/src/com/android/devicelockcontroller/SystemDeviceLockManagerImpl.java
+index 93540aec7259bf78c138b9372eb64cdf64a38c41..4916c823c83dabb5bef2ff35c623b5ba9d741130 100644
+--- a/DeviceLockController/src/com/android/devicelockcontroller/SystemDeviceLockManagerImpl.java
++++ b/DeviceLockController/src/com/android/devicelockcontroller/SystemDeviceLockManagerImpl.java
+@@ -48,7 +48,10 @@ public final class SystemDeviceLockManagerImpl implements SystemDeviceLockManage
+         final DeviceLockManager deviceLockManager = context.getSystemService(
+                 DeviceLockManager.class);
+ 
+-        mIDeviceLockService = deviceLockManager.getService();
++        if (deviceLockManager != null)
++            mIDeviceLockService = deviceLockManager.getService();
++        else
++            mIDeviceLockService = null;
+     }
+ 
+     private SystemDeviceLockManagerImpl() {
