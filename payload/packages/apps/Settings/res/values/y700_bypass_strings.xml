@@ -12,8 +12,8 @@
     <string name="y700_bypass_unavailable">Checking charging controller…</string>
     <string name="y700_bypass_unsupported">Unavailable on this device or firmware base</string>
     <string name="y700_bypass_connect">Connect the charger. Bypass is off.</string>
-    <string name="y700_bypass_need_charge">The battery must be charging and below full charge.</string>
-    <string name="y700_bypass_capacity" formatted="false">Battery level must be between 20% and 99% to start.</string>
+    <string name="y700_bypass_need_charge">Check the charger: the battery is discharging or charging is not confirmed.</string>
+    <string name="y700_bypass_capacity" formatted="false">Battery level must be at least 20% to start.</string>
     <string name="y700_bypass_temperature">Stopped: battery temperature reached 45 °C.</string>
     <string name="y700_bypass_write_failed">The charging request was not accepted. Bypass is stopped.</string>
     <string name="y700_bypass_telemetry">Stopped: battery or power readings are unavailable.</string>

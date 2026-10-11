@@ -23,8 +23,14 @@ void Controller::request(bool enable, const Frame& frame, int64_t now) {
     if (frame.charging!=1) { s_.reason=OVERRIDE; return; }
     if (frame.online!=1 || frame.suspended!=0) { s_.reason=POWER; return; }
     if (!frame.numbersValid || !frame.fgValid) { s_.reason=TELEMETRY; return; }
-    if (!frame.isCharging || frame.current>=0) { s_.reason=NEED_CHARGE; return; }
-    if (frame.capacity<20 || frame.capacity>=100) { s_.reason=CAPACITY; return; }
+    // Full batteries can report Full/Not charging and near-zero current while
+    // the connected charger powers the tablet. An incoming charge is not a
+    // prerequisite in this case. Reject a discharge beyond telemetry noise.
+    const bool chargingNow=frame.isCharging && frame.current<0;
+    const bool fullOnExternalPower=(frame.isFull || frame.capacity==100)
+                                   && frame.current<=50000;
+    if (!chargingNow && !fullOnExternalPower) { s_.reason=NEED_CHARGE; return; }
+    if (frame.capacity<20) { s_.reason=CAPACITY; return; }
     if (frame.temp>=450) { s_.reason=TEMPERATURE; return; }
     s_.managed=true; s_.phase=STARTING; s_.active=false;
     started_=now; lastSample_=now-3000;

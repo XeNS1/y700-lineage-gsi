@@ -61,8 +61,11 @@ Frame readFrame() {
     value.fgValid=number("/sys/class/qcom-battery/fg1_current", &value.fg1)
                   && number("/sys/class/qcom-battery/fg2_current", &value.fg2);
     std::string status;
-    value.isCharging=android::base::ReadFileToString("/sys/class/power_supply/battery/status", &status)
-                     && android::base::Trim(status)=="Charging";
+    if (android::base::ReadFileToString("/sys/class/power_supply/battery/status", &status)) {
+        status=android::base::Trim(status);
+        value.isCharging=status=="Charging";
+        value.isFull=status=="Full";
+    }
     return value;
 }
 bool publishHeartbeat(bool managed) {

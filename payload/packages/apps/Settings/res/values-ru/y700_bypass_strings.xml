@@ -12,8 +12,8 @@
     <string name="y700_bypass_unavailable">Проверка контроллера зарядки…</string>
     <string name="y700_bypass_unsupported">Недоступно на этом устройстве или базе прошивки</string>
     <string name="y700_bypass_connect">Подключи зарядник. Обходная зарядка выключена.</string>
-    <string name="y700_bypass_need_charge">Батарея должна заряжаться и быть ниже полного заряда.</string>
-    <string name="y700_bypass_capacity" formatted="false">Для включения нужен заряд от 20% до 99%.</string>
+    <string name="y700_bypass_need_charge">Проверь зарядник: батарея разряжается или зарядка не подтверждена.</string>
+    <string name="y700_bypass_capacity" formatted="false">Для включения нужен заряд не менее 20%.</string>
     <string name="y700_bypass_temperature">Режим остановлен: температура батареи достигла 45 °C.</string>
     <string name="y700_bypass_write_failed">Запрос изменения зарядки не принят. Обход остановлен.</string>
     <string name="y700_bypass_telemetry">Режим остановлен: показания батареи или питания недоступны.</string>

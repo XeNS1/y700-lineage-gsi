@@ -27,8 +27,11 @@ struct FakeOutput: Output {
         frame.numbersValid=true; frame.fgValid=true; frame.isCharging=true;
     }
     void apply(bool allowed) {
-        frame.charging=allowed ? 1 : 0; frame.current=allowed ? -441000 : 0;
-        frame.fg1=allowed ? 220000 : 0; frame.fg2=frame.fg1; frame.isCharging=allowed;
+        frame.charging=allowed ? 1 : 0;
+        frame.isFull=allowed && frame.capacity==100;
+        frame.isCharging=allowed && !frame.isFull;
+        frame.current=frame.isCharging ? -441000 : 0;
+        frame.fg1=frame.isCharging ? 220000 : 0; frame.fg2=frame.fg1;
     }
     bool writeCharging(bool allowed) override {
         writes.push_back(allowed);
@@ -176,14 +179,52 @@ int main() {
         c.request(true,io.frame,1); c.request(false,io.frame,2);
         check(io.writes.empty() && c.state().phase==UNSUPPORTED,"wrong device written");
       }},
-      {"preflight-rejects-low-full-hot-offline",[] {
-        for (int caseNo=0;caseNo<4;++caseNo) {
+      {"preflight-rejects-low-hot-offline",[] {
+        for (int caseNo=0;caseNo<3;++caseNo) {
             Fixture f;
             if (caseNo==0) f.io.frame.capacity=19;
-            if (caseNo==1) f.io.frame.capacity=100;
-            if (caseNo==2) f.io.frame.temp=450;
-            if (caseNo==3) f.io.frame.online=0;
+            if (caseNo==1) f.io.frame.temp=450;
+            if (caseNo==2) f.io.frame.online=0;
             f.request(true,2000); check(f.io.disables()==0,"preflight disabled charging");
+        }
+      }},
+      {"full-battery-starts-and-restores-with-zero-current",[] {
+        Fixture f; f.io.frame.capacity=100; f.io.frame.isCharging=false;
+        f.io.frame.isFull=true; f.io.frame.current=0;
+        f.io.frame.fg1=0; f.io.frame.fg2=0;
+        f.on(); check(f.io.disables()==1,"full battery did not enter bypass");
+        f.off(10000); check(f.io.frame.isFull && f.io.frame.current==0,
+                           "full battery charging enable restore was not confirmed");
+      }},
+      {"hundred-percent-charging-status-starts",[] {
+        Fixture f; f.io.frame.capacity=100; f.on(); f.off(10000);
+      }},
+      {"hundred-percent-not-charging-status-starts",[] {
+        Fixture f; f.io.frame.capacity=100; f.io.frame.isCharging=false;
+        f.io.frame.isFull=false; f.io.frame.current=0;
+        f.io.frame.fg1=0; f.io.frame.fg2=0;
+        f.on(); f.tick(40000); check(f.controller.state().active,"full idle mode stopped");
+        f.off(41000);
+      }},
+      {"full-status-with-rounded-down-percent-starts",[] {
+        Fixture f; f.io.frame.capacity=99; f.io.frame.isCharging=false;
+        f.io.frame.isFull=true; f.io.frame.current=0;
+        f.io.frame.fg1=0; f.io.frame.fg2=0;
+        f.on(); f.off(10000);
+      }},
+      {"full-battery-preflight-still-checks-power-and-telemetry",[] {
+        for (int caseNo=0;caseNo<7;++caseNo) {
+            Fixture f; f.io.frame.capacity=100; f.io.frame.isCharging=false;
+            f.io.frame.isFull=true; f.io.frame.current=0;
+            if (caseNo==0) f.io.frame.online=0;
+            if (caseNo==1) f.io.frame.suspended=1;
+            if (caseNo==2) f.io.frame.numbersValid=false;
+            if (caseNo==3) f.io.frame.fgValid=false;
+            if (caseNo==4) f.io.frame.temp=450;
+            if (caseNo==5) f.io.frame.current=250000;
+            if (caseNo==6) f.io.frame.charging=0;
+            f.request(true,2000);
+            check(f.io.disables()==0,"full battery bypassed another preflight condition");
         }
       }},
       {"duplicate-request-never-reasserts-zero",[] {

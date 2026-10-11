@@ -11,7 +11,7 @@ enum Reason { NONE=0, PROFILE=1, POWER=2, NEED_CHARGE=3, CAPACITY=4,
 struct Frame {
     int charging=-1, online=-1, suspended=-1, capacity=-1, temp=-1;
     int64_t current=0, fg1=0, fg2=0;
-    bool numbersValid=false, fgValid=false, isCharging=false;
+    bool numbersValid=false, fgValid=false, isCharging=false, isFull=false;
 };
 struct State {
     bool supported=false, managed=false, active=false;

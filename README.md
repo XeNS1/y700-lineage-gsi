@@ -23,6 +23,7 @@ and installation methods have not been established by these tests.
 - Russian label: **Обходная зарядка (Экспериментально)**; English translation included.
 - Quick Settings tile uses the supplied icon, reflects the service's actual state,
   and is appended to the end of the active tile list when added automatically.
+- Bypass can be enabled at **100%**, including a full battery with zero charging current.
 - The native controller uses the tested stock battery sysfs interface. It checks
   charging readback and battery telemetry, with a separate watchdog for recovery.
 - TB321FU-specific orientation default respects landscape-only applications.
